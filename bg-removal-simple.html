@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Background Removal Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+        }
+        
+        .panel {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        
+        .upload-area:hover {
+            border-color: #4CAF50;
+            background: #f9f9f9;
+        }
+        
+        .upload-area.dragover {
+            border-color: #2196F3;
+            background: #e3f2fd;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .control-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+        }
+        
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        .presets {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .preset-btn {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .preset-btn:hover {
+            background: #e0e0e0;
+        }
+        
+        .process-btn {
+            width: 100%;
+            padding: 15px;
+            background: #4CAF50;
+            color: white;
+            font-size: 16px;
+        }
+        
+        .process-btn:hover:not(:disabled) {
+            background: #45a049;
+        }
+        
+        .process-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .action-btn {
+            width: 100%;
+            margin-bottom: 10px;
+            background: #2196F3;
+            color: white;
+        }
+        
+        .action-btn:hover {
+            background: #1976d2;
+        }
+        
+        .download-btn {
+            background: #4CAF50;
+        }
+        
+        .download-btn:hover {
+            background: #45a049;
+        }
+        
+        .reset-btn {
+            background: #f44336;
+        }
+        
+        .reset-btn:hover {
+            background: #d32f2f;
+        }
+        
+        .image-container {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .image-box {
+            position: relative;
+            background: #f9f9f9;
+            border-radius: 10px;
+            overflow: hidden;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .image-box img {
+            max-width: 100%;
+            max-height: 600px;
+            height: auto;
+            display: block;
+        }
+        
+        .checkerboard {
+            background-image: 
+                linear-gradient(45deg, #ddd 25%, transparent 25%), 
+                linear-gradient(-45deg, #ddd 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #ddd 75%), 
+                linear-gradient(-45deg, transparent 75%, #ddd 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        
+        .placeholder {
+            text-align: center;
+            color: #999;
+        }
+        
+        .view-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        
+        select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .toggle-btn {
+            background: #9c27b0;
+            color: white;
+            padding: 8px 16px;
+        }
+        
+        .toggle-btn:hover {
+            background: #7b1fa2;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #333;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Background Removal Tool</h1>
+            <p>Upload an image and remove its background instantly</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Controls Panel -->
+            <div class="controls">
+                <div class="panel">
+                    <h2>Upload Image</h2>
+                    <div class="upload-area" id="uploadArea">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" style="margin: 0 auto 10px;">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                        </svg>
+                        <p>Drag & drop an image here</p>
+                        <p style="font-size: 14px; color: #888; margin-top: 5px;">or click to browse</p>
+                        <input type="file" id="fileInput" accept="image/*">
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>Parameters</h2>
+                    
+                    <div class="presets">
+                        <button class="preset-btn" onclick="applyPreset('simple')">Simple</button>
+                        <button class="preset-btn" onclick="applyPreset('standard')">Standard</button>
+                        <button class="preset-btn" onclick="applyPreset('complex')">Complex</button>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Color Threshold: <span id="thresholdValue">30</span></label>
+                        <input type="range" id="threshold" min="5" max="100" value="30" step="5">
+                        <div class="range-labels">
+                            <span>Similar Colors Only</span>
+                            <span>More Colors</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Smoothing: <span id="smoothingValue">2</span></label>
+                        <input type="range" id="smoothing" min="0" max="10" value="2">
+                        <div class="range-labels">
+                            <span>None</span>
+                            <span>Maximum</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Feather Radius: <span id="featherValue">3</span></label>
+                        <input type="range" id="featherRadius" min="0" max="20" value="3">
+                        <div class="range-labels">
+                            <span>Hard Edge</span>
+                            <span>Soft Edge</span>
+                        </div>
+                    </div>
+
+                    <button class="process-btn" id="processBtn" onclick="processImage()" disabled>
+                        Remove Background
+                    </button>
+                </div>
+
+                <div class="panel hidden" id="actionsPanel">
+                    <h2>Actions</h2>
+                    <button class="action-btn download-btn" onclick="downloadResult()">Download Result</button>
+                    <button class="action-btn" onclick="downloadMask()">Download Mask</button>
+                    <button class="action-btn reset-btn" onclick="resetAll()">Reset All</button>
+                    <div id="processingInfo" style="margin-top: 15px; padding: 10px; background: #f0f0f0; border-radius: 5px; font-size: 14px;"></div>
+                </div>
+            </div>
+
+            <!-- Image Display -->
+            <div class="panel">
+                <div class="view-controls hidden" id="viewControls">
+                    <button class="toggle-btn" onclick="toggleMask()">Show Mask</button>
+                    <select id="viewMode" onchange="updateDisplay()">
+                        <option value="side-by-side">Side by Side</option>
+                        <option value="single">Single View</option>
+                    </select>
+                </div>
+                
+                <div class="image-container" id="imageContainer">
+                    <div class="image-box">
+                        <div class="placeholder">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                            <p style="margin-top: 10px;">No image uploaded yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas" style="display: none;"></canvas>
+    <canvas id="maskCanvas" style="display: none;"></canvas>
+
+    <script>
+        let originalImage = null;
+        let processedImageUrl = null;
+        let maskImageUrl = null;
+        let showingMask = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+
+            uploadArea.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileSelect);
+
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    loadImage(file);
+                }
+            });
+
+            // Range inputs
+            ['threshold', 'smoothing', 'featherRadius'].forEach(id => {
+                document.getElementById(id).addEventListener('input', (e) => {
+                    document.getElementById(id + 'Value').textContent = e.target.value;
+                });
+            });
+        });
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) loadImage(file);
+        }
+
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    originalImage = img;
+                    displayOriginal();
+                    document.getElementById('processBtn').disabled = false;
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function displayOriginal() {
+            const container = document.getElementById('imageContainer');
+            container.innerHTML = `
+                <div class="image-box">
+                    <img src="${originalImage.src}" alt="Original">
+                </div>
+            `;
+        }
+
+        function processImage() {
+            const btn = document.getElementById('processBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>Processing...';
+
+            setTimeout(() => {
+                const startTime = performance.now();
+                
+                const canvas = document.getElementById('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = originalImage.width;
+                canvas.height = originalImage.height;
+                ctx.drawImage(originalImage, 0, 0);
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const result = removeBackground(
+                    imageData,
+                    parseInt(document.getElementById('threshold').value),
+                    parseInt(document.getElementById('smoothing').value),
+                    parseInt(document.getElementById('featherRadius').value)
+                );
+
+                ctx.putImageData(result.image, 0, 0);
+                processedImageUrl = canvas.toDataURL('image/png');
+
+                const maskCanvas = document.getElementById('maskCanvas');
+                const maskCtx = maskCanvas.getContext('2d');
+                maskCanvas.width = canvas.width;
+                maskCanvas.height = canvas.height;
+                maskCtx.putImageData(result.mask, 0, 0);
+                maskImageUrl = maskCanvas.toDataURL('image/png');
+
+                const processingTime = performance.now() - startTime;
+
+                updateDisplay();
+                document.getElementById('viewControls').classList.remove('hidden');
+                document.getElementById('actionsPanel').classList.remove('hidden');
+                document.getElementById('processingInfo').textContent = 
+                    `Processing time: ${processingTime.toFixed(0)}ms`;
+
+                btn.disabled = false;
+                btn.innerHTML = 'Remove Background';
+                
+                // Show info about the result
+                const info = document.getElementById('processingInfo');
+                info.innerHTML = `
+                    Processing time: ${processingTime.toFixed(0)}ms<br>
+                    <small style="color: #666;">
+                        Tip: If too much/little was removed, adjust the threshold slider and try again.
+                    </small>
+                `;
+            }, 100);
+        }
+
+        function removeBackground(imageData, threshold, smoothing, featherRadius) {
+            const width = imageData.width;
+            const height = imageData.height;
+            const data = imageData.data;
+
+            const mask = new Uint8Array(width * height);
+            const visited = new Uint8Array(width * height);
+
+            // More accurate color distance calculation
+            function colorDistance(idx1, idx2) {
+                const i1 = idx1 * 4;
+                const i2 = idx2 * 4;
+                
+                const r1 = data[i1];
+                const g1 = data[i1 + 1];
+                const b1 = data[i1 + 2];
+                const r2 = data[i2];
+                const g2 = data[i2 + 1];
+                const b2 = data[i2 + 2];
+
+                // Simple Euclidean distance
+                const dr = r1 - r2;
+                const dg = g1 - g2;
+                const db = b1 - b2;
+                
+                return Math.sqrt(dr * dr + dg * dg + db * db);
+            }
+
+            // Improved flood fill with better threshold handling
+            function floodFill(startX, startY) {
+                const stack = [{x: startX, y: startY}];
+                const startIdx = startY * width + startX;
+                const startColor = {
+                    r: data[startIdx * 4],
+                    g: data[startIdx * 4 + 1],
+                    b: data[startIdx * 4 + 2]
+                };
+
+                while (stack.length > 0) {
+                    const {x, y} = stack.pop();
+                    
+                    // Bounds check
+                    if (x < 0 || x >= width || y < 0 || y >= height) continue;
+
+                    const idx = y * width + x;
+                    
+                    // Skip if already visited
+                    if (visited[idx]) continue;
+                    visited[idx] = 1;
+
+                    // Get current pixel color
+                    const pixelIdx = idx * 4;
+                    const currentColor = {
+                        r: data[pixelIdx],
+                        g: data[pixelIdx + 1],
+                        b: data[pixelIdx + 2]
+                    };
+
+                    // Calculate color difference from start color
+                    const dr = currentColor.r - startColor.r;
+                    const dg = currentColor.g - startColor.g;
+                    const db = currentColor.b - startColor.b;
+                    const distance = Math.sqrt(dr * dr + dg * dg + db * db);
+
+                    // Use threshold properly (scale from 0-100 to 0-255)
+                    const scaledThreshold = (threshold / 100) * 255;
+
+                    if (distance <= scaledThreshold) {
+                        mask[idx] = 255; // Mark as background
+                        
+                        // Add neighbors to stack
+                        stack.push({x: x + 1, y: y});
+                        stack.push({x: x - 1, y: y});
+                        stack.push({x: x, y: y + 1});
+                        stack.push({x: x, y: y - 1});
+                        
+                        // Also add diagonal neighbors for better fill
+                        stack.push({x: x + 1, y: y + 1});
+                        stack.push({x: x - 1, y: y - 1});
+                        stack.push({x: x + 1, y: y - 1});
+                        stack.push({x: x - 1, y: y + 1});
+                    }
+                }
+            }
+
+            // Sample from multiple edge points for better background detection
+            const samplePoints = [];
+            
+            // Corners
+            samplePoints.push({x: 0, y: 0});
+            samplePoints.push({x: width - 1, y: 0});
+            samplePoints.push({x: 0, y: height - 1});
+            samplePoints.push({x: width - 1, y: height - 1});
+            
+            // Edge midpoints
+            samplePoints.push({x: Math.floor(width / 2), y: 0});
+            samplePoints.push({x: Math.floor(width / 2), y: height - 1});
+            samplePoints.push({x: 0, y: Math.floor(height / 2)});
+            samplePoints.push({x: width - 1, y: Math.floor(height / 2)});
+
+            // Fill from all sample points
+            samplePoints.forEach(point => {
+                if (!visited[point.y * width + point.x]) {
+                    floodFill(point.x, point.y);
+                }
+            });
+
+            // Debug: Check how much was marked as background
+            let bgCount = 0;
+            for (let i = 0; i < mask.length; i++) {
+                if (mask[i] === 255) bgCount++;
+            }
+            console.log(`Background pixels: ${bgCount}/${mask.length} (${(bgCount/mask.length*100).toFixed(1)}%)`);
+
+            // Invert mask (background = 0, foreground = 255)
+            for (let i = 0; i < mask.length; i++) {
+                mask[i] = mask[i] === 255 ? 0 : 255;
+            }
+
+            // Morphological operations
+            for (let s = 0; s < smoothing; s++) {
+                const temp = new Uint8Array(mask);
+                
+                // Erosion
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        const idx = y * width + x;
+                        let min = 255;
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                min = Math.min(min, temp[(y + dy) * width + (x + dx)]);
+                            }
+                        }
+                        mask[idx] = min;
+                    }
+                }
+
+                // Dilation
+                const temp2 = new Uint8Array(mask);
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        const idx = y * width + x;
+                        let max = 0;
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                max = Math.max(max, temp2[(y + dy) * width + (x + dx)]);
+                            }
+                        }
+                        mask[idx] = max;
+                    }
+                }
+            }
+
+            // Feathering
+            if (featherRadius > 0) {
+                const feathered = new Uint8Array(mask);
+                
+                for (let y = featherRadius; y < height - featherRadius; y++) {
+                    for (let x = featherRadius; x < width - featherRadius; x++) {
+                        const idx = y * width + x;
+                        
+                        // Check if edge
+                        let isEdge = false;
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                if (dx === 0 && dy === 0) continue;
+                                if (mask[idx] !== mask[(y + dy) * width + (x + dx)]) {
+                                    isEdge = true;
+                                    break;
+                                }
+                            }
+                            if (isEdge) break;
+                        }
+                        
+                        if (isEdge) {
+                            let sum = 0, weightSum = 0;
+                            for (let dy = -featherRadius; dy <= featherRadius; dy++) {
+                                for (let dx = -featherRadius; dx <= featherRadius; dx++) {
+                                    const dist = Math.sqrt(dx * dx + dy * dy);
+                                    if (dist <= featherRadius) {
+                                        const weight = 1 - (dist / featherRadius);
+                                        sum += mask[(y + dy) * width + (x + dx)] * weight;
+                                        weightSum += weight;
+                                    }
+                                }
+                            }
+                            feathered[idx] = Math.round(sum / weightSum);
+                        } else {
+                            feathered[idx] = mask[idx];
+                        }
+                    }
+                }
+                
+                for (let i = 0; i < mask.length; i++) {
+                    mask[i] = feathered[i];
+                }
+            }
+
+            // Create output
+            const outputImage = new ImageData(width, height);
+            const maskImage = new ImageData(width, height);
+
+            for (let i = 0; i < data.length; i += 4) {
+                const idx = i / 4;
+                
+                outputImage.data[i] = data[i];
+                outputImage.data[i + 1] = data[i + 1];
+                outputImage.data[i + 2] = data[i + 2];
+                outputImage.data[i + 3] = mask[idx];
+
+                maskImage.data[i] = mask[idx];
+                maskImage.data[i + 1] = mask[idx];
+                maskImage.data[i + 2] = mask[idx];
+                maskImage.data[i + 3] = 255;
+            }
+
+            return { image: outputImage, mask: maskImage };
+        }
+
+        function updateDisplay() {
+            const container = document.getElementById('imageContainer');
+            const mode = document.getElementById('viewMode').value;
+            const imageUrl = showingMask ? maskImageUrl : processedImageUrl;
+
+            if (mode === 'side-by-side') {
+                container.style.gridTemplateColumns = '1fr 1fr';
+                container.innerHTML = `
+                    <div class="image-box">
+                        <img src="${originalImage.src}" alt="Original">
+                    </div>
+                    <div class="image-box ${!showingMask ? 'checkerboard' : ''}">
+                        <img src="${imageUrl}" alt="${showingMask ? 'Mask' : 'Result'}">
+                    </div>
+                `;
+            } else {
+                container.style.gridTemplateColumns = '1fr';
+                container.innerHTML = `
+                    <div class="image-box ${!showingMask ? 'checkerboard' : ''}">
+                        <img src="${imageUrl}" alt="${showingMask ? 'Mask' : 'Result'}">
+                    </div>
+                `;
+            }
+        }
+
+        function toggleMask() {
+            showingMask = !showingMask;
+            const btn = event.target;
+            btn.textContent = showingMask ? 'Show Result' : 'Show Mask';
+            updateDisplay();
+        }
+
+        function applyPreset(preset) {
+            const presets = {
+                simple: { threshold: 15, smoothing: 1, featherRadius: 2 },
+                standard: { threshold: 30, smoothing: 2, featherRadius: 3 },
+                complex: { threshold: 50, smoothing: 3, featherRadius: 5 }
+            };
+
+            const p = presets[preset];
+            ['threshold', 'smoothing', 'featherRadius'].forEach(key => {
+                document.getElementById(key).value = p[key];
+                document.getElementById(key + 'Value').textContent = p[key];
+            });
+        }
+
+        function downloadResult() {
+            const a = document.createElement('a');
+            a.href = processedImageUrl;
+            a.download = 'background-removed.png';
+            a.click();
+        }
+
+        function downloadMask() {
+            const a = document.createElement('a');
+            a.href = maskImageUrl;
+            a.download = 'mask.png';
+            a.click();
+        }
+
+        function resetAll() {
+            location.reload();
+        }
+    </script>
+</body>
+</html>
