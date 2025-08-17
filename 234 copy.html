@@ -355,21 +355,24 @@
                   <div class="tab-content" id="tab-edit-content">
                     <div class="tab-section">
                       <h4 class="section-title">Background Removal</h4>
-                      <button id="remove-bg-btn" class="action-btn">
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <path d="M9 12l2 2 4-4" />
-                          <circle cx="12" cy="12" r="10" />
-                        </svg>
-                        Remove Background
-                      </button>
-                      <button id="reset-image-btn" class="action-btn secondary">
+                      <div class="control-group">
+                        <label class="control-label" for="bg-threshold-slider">Removal Threshold</label>
+                        <div class="slider-container">
+                          <input
+                            type="range"
+                            id="bg-threshold-slider"
+                            min="0"
+                            max="100"
+                            value="0"
+                            class="slider"
+                          />
+                          <span class="slider-value">0</span>
+                        </div>
+                        <p class="control-note" style="font-size: 12px; color: var(--muted); margin-top: 8px;">
+                          Adjust the sensitivity of the background removal. Set to 0 to restore original.
+                        </p>
+                      </div>
+                      <button id="reset-image-btn" class="action-btn secondary" style="margin-top: 16px;">
                         <svg
                           width="16"
                           height="16"
@@ -387,7 +390,7 @@
                           />
                           <path d="M8 16H3v5" />
                         </svg>
-                        Reset
+                        Reset All Effects
                       </button>
                     </div>
 
@@ -3300,176 +3303,109 @@
         const borderColor = document.getElementById('border-color');
         const borderStyle = document.getElementById('border-style');
         const resetBtn = document.getElementById('reset-image-btn');
-        const removeBgBtn = document.getElementById('remove-bg-btn');
+        const bgThresholdSlider = document.getElementById('bg-threshold-slider');
+        const bgThresholdValue = bgThresholdSlider.nextElementSibling;
 
-        // Enhanced background removal with progress feedback
-        removeBgBtn.addEventListener('click', async () => {
-          const activeObj = window.imageEditorInstance?.canvas.getActiveObject();
-          if (!activeObj || activeObj.type !== 'image') {
-            alert('Please select an image first');
-            return;
-          }
-
-          // --- Create Progress Overlay ---
-          const progressOverlay = document.createElement('div');
-          progressOverlay.id = 'bg-removal-progress';
-          progressOverlay.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center;
-            align-items: center; z-index: 10000; color: white;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          `;
-          const progressContent = document.createElement('div');
-          progressContent.style.cssText = `
-            background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 30px;
-            text-align: center; backdrop-filter: blur(10px); min-width: 300px;
-          `;
-          const progressTitle = document.createElement('h3');
-          progressTitle.textContent = 'Removing Background';
-          progressTitle.style.cssText = 'margin: 0 0 15px 0; font-size: 18px; font-weight: 600;';
-          const progressBar = document.createElement('div');
-          progressBar.style.cssText = `
-            width: 100%; height: 8px; background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px; overflow: hidden; margin: 15px 0;
-          `;
-          const progressFill = document.createElement('div');
-          progressFill.style.cssText = `
-            height: 100%; background: linear-gradient(90deg, #60a5fa, #3b82f6);
-            width: 0%; transition: width 0.3s ease; border-radius: 4px;
-          `;
-          const progressText = document.createElement('div');
-          progressText.textContent = 'Initializing...';
-          progressText.style.cssText = 'font-size: 14px; color: rgba(255, 255, 255, 0.8); margin-top: 10px;';
-          const closeBtn = document.createElement('button');
-          closeBtn.textContent = 'Cancel';
-          closeBtn.disabled = true;
-          closeBtn.style.cssText = `
-            margin-top: 20px; padding: 8px 16px; border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: 6px; background: rgba(255, 255, 255, 0.1); color: white;
-            cursor: pointer; transition: all 0.2s; opacity: 0.5;
-          `;
-          const closeOverlay = () => {
-            if (progressOverlay.parentNode) {
-              progressOverlay.parentNode.removeChild(progressOverlay);
-            }
-          };
-          closeBtn.onclick = closeOverlay;
-          closeBtn.onmouseover = () => { if (!closeBtn.disabled) closeBtn.style.background = 'rgba(255, 255, 255, 0.2)'; };
-          closeBtn.onmouseout = () => { if (!closeBtn.disabled) closeBtn.style.background = 'rgba(255, 255, 255, 0.1)'; };
-
-          progressBar.appendChild(progressFill);
-          progressContent.appendChild(progressTitle);
-          progressContent.appendChild(progressBar);
-          progressContent.appendChild(progressText);
-          progressContent.appendChild(closeBtn);
-          progressOverlay.appendChild(progressContent);
-          document.body.appendChild(progressOverlay);
-
-          // --- Worker and Main Logic ---
-          let worker = null; // Keep worker in scope to terminate on cancel
-          const originalText = removeBgBtn.innerHTML;
-          removeBgBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> Processing...';
-          removeBgBtn.disabled = true;
-          closeBtn.disabled = false; // Allow cancellation
-          closeBtn.style.opacity = '1';
-
-          closeBtn.onclick = () => {
-            if (worker) {
-              worker.terminate();
-              console.log('Background removal cancelled by user.');
-            }
-            closeOverlay();
-            removeBgBtn.innerHTML = originalText;
-            removeBgBtn.disabled = false;
-          };
-
-          try {
-            // Get and downscale image data
-            const bgCanvas = document.getElementById('bg-canvas');
-            const imgEl = activeObj._element;
-            bgCanvas.width = imgEl.naturalWidth;
-            bgCanvas.height = imgEl.naturalHeight;
-            const ctx = bgCanvas.getContext('2d');
-            ctx.drawImage(imgEl, 0, 0);
-            let imageData = ctx.getImageData(0, 0, bgCanvas.width, bgCanvas.height);
-            const MAX_DIM = 1024;
-            if (imageData.width > MAX_DIM || imageData.height > MAX_DIM) {
-              const scale = Math.min(MAX_DIM / imageData.width, MAX_DIM / imageData.height);
-              const newWidth = Math.round(imageData.width * scale);
-              const newHeight = Math.round(imageData.height * scale);
-              const tempCanvas = document.createElement('canvas');
-              tempCanvas.width = newWidth; tempCanvas.height = newHeight;
-              const tempCtx = tempCanvas.getContext('2d');
-              const originalCanvas = document.createElement('canvas');
-              originalCanvas.width = imageData.width; originalCanvas.height = imageData.height;
-              originalCanvas.getContext('2d').putImageData(imageData, 0, 0);
-              tempCtx.drawImage(originalCanvas, 0, 0, newWidth, newHeight);
-              imageData = tempCtx.getImageData(0, 0, newWidth, newHeight);
-            }
-
-            // Setup progress handler
-            const onProgress = (progress, message) => {
-              progressFill.style.width = progress + '%';
-              progressText.textContent = message || 'Processing...';
+        // --- Debounce Utility ---
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), delay);
             };
+        }
 
-            // Start background removal
-            const result = await BackgroundRemover.removeBackground(imageData, 30, 2, 3, onProgress, (w) => { worker = w; });
-
-            // Validate result
-            let hasVisiblePixels = false;
-            for (let i = 3; i < result.data.length; i += 4) {
-              if (result.data[i] > 0) { hasVisiblePixels = true; break; }
-            }
-            if (!hasVisiblePixels) {
-              throw new Error('Background removal removed the entire image. Please try again.');
-            }
-
-            // Create and place new image
-            ctx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-            ctx.putImageData(result, 0, 0);
-            const newUrl = bgCanvas.toDataURL('image/png');
-            const newImg = await new Promise((resolve, reject) => {
-              fabric.Image.fromURL(newUrl, (img) => {
-                if (!img || !img.width || !img.height) reject(new Error('Failed to create image from result'));
-                else resolve(img);
-              }, { crossOrigin: 'anonymous' });
-            });
-            newImg.set({
-              scaleX: activeObj.scaleX, scaleY: activeObj.scaleY, left: activeObj.left, top: activeObj.top,
-              originX: activeObj.originX, originY: activeObj.originY, angle: activeObj.angle,
-              cornerStyle: "circle", cornerColor: "rgba(125, 211, 252, 0.8)", cornerSize: 12,
-              transparentCorners: false, borderColor: "rgba(125, 211, 252, 0.8)", borderScaleFactor: 2,
-            });
-            const canvas = window.imageEditorInstance.canvas;
-            canvas.remove(activeObj);
-            canvas.add(newImg);
-            canvas.setActiveObject(newImg);
-
-            // Render and save
-            await new Promise(resolve => {
-              canvas.renderAll();
-              requestAnimationFrame(() => { canvas.renderAll(); resolve(); });
-            });
-            if (window.imageEditorInstance.saveState) {
-              window.imageEditorInstance.saveState();
+        // --- Background Removal Logic ---
+        const processBgRemoval = async (threshold) => {
+            const activeObj = window.imageEditorInstance?.canvas.getActiveObject();
+            if (!activeObj || activeObj.type !== 'image') {
+                bgThresholdSlider.value = 0;
+                bgThresholdValue.textContent = '0';
+                // alert('Please select an image first.');
+                return;
             }
 
-            // Finalize UI
-            progressText.textContent = 'Complete!';
-            closeBtn.textContent = 'Done';
-            setTimeout(closeOverlay, 1000); // Auto-close after 1s
+            // Store original image data on first run
+            if (!activeObj.originalSrc) {
+                activeObj.originalSrc = activeObj.getSrc();
+            }
 
-          } catch (error) {
-            console.error('Background removal failed:', error);
-            progressText.textContent = 'Error: ' + (error.message || 'Unknown error');
-            closeBtn.textContent = 'Close';
-            alert(error.message || 'Background removal failed. Please try again.');
-          } finally {
-            // Re-enable main button
-            removeBgBtn.innerHTML = originalText;
-            removeBgBtn.disabled = false;
-          }
+            // If threshold is 0, restore original image
+            if (threshold === 0) {
+                fabric.Image.fromURL(activeObj.originalSrc, (originalImg) => {
+                    originalImg.set({
+                        scaleX: activeObj.scaleX, scaleY: activeObj.scaleY, left: activeObj.left, top: activeObj.top,
+                        originX: activeObj.originX, originY: activeObj.originY, angle: activeObj.angle,
+                    });
+                    const canvas = window.imageEditorInstance.canvas;
+                    canvas.remove(activeObj);
+                    canvas.add(originalImg);
+                    canvas.setActiveObject(originalImg);
+                    canvas.renderAll();
+                    if (window.imageEditorInstance.saveState) window.imageEditorInstance.saveState();
+                }, { crossOrigin: 'anonymous' });
+                return;
+            }
+
+            // --- Use a temporary canvas to get image data ---
+            const tempCanvas = document.createElement('canvas');
+            const imgEl = activeObj._element;
+            tempCanvas.width = imgEl.naturalWidth;
+            tempCanvas.height = imgEl.naturalHeight;
+            const ctx = tempCanvas.getContext('2d');
+            ctx.drawImage(imgEl, 0, 0);
+            let imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+
+            // The rest of the logic is simplified as we don't need the complex progress overlay for a slider
+            try {
+                const result = await BackgroundRemover.removeBackground(imageData, threshold, 2, 3);
+
+                let hasVisiblePixels = false;
+                for (let i = 3; i < result.data.length; i += 4) { if (result.data[i] > 0) { hasVisiblePixels = true; break; } }
+                if (!hasVisiblePixels) {
+                    console.warn('Background removal resulted in a fully transparent image.');
+                    // Don't throw an error, just leave the image as is before this step
+                    return;
+                }
+
+                ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                ctx.putImageData(result, 0, 0);
+                const newUrl = tempCanvas.toDataURL('image/png');
+
+                const newImg = await new Promise((resolve, reject) => {
+                    fabric.Image.fromURL(newUrl, (img) => {
+                        if (!img || !img.width || !img.height) reject(new Error('Failed to create image from result'));
+                        else resolve(img);
+                    }, { crossOrigin: 'anonymous' });
+                });
+
+                newImg.set({
+                    scaleX: activeObj.scaleX, scaleY: activeObj.scaleY, left: activeObj.left, top: activeObj.top,
+                    originX: activeObj.originX, originY: activeObj.originY, angle: activeObj.angle,
+                    originalSrc: activeObj.originalSrc // Preserve original source
+                });
+
+                const canvas = window.imageEditorInstance.canvas;
+                const index = canvas.getObjects().indexOf(activeObj);
+                canvas.remove(activeObj);
+                canvas.add(newImg);
+                canvas.moveTo(newImg, index);
+                canvas.setActiveObject(newImg);
+                canvas.renderAll();
+                if (window.imageEditorInstance.saveState) window.imageEditorInstance.saveState();
+
+            } catch (error) {
+                console.error("Background removal slider failed:", error);
+            }
+        };
+
+        const debouncedBgRemoval = debounce(processBgRemoval, 250);
+
+        bgThresholdSlider.addEventListener('input', (e) => {
+            const threshold = parseInt(e.target.value, 10);
+            bgThresholdValue.textContent = threshold;
+            debouncedBgRemoval(threshold);
         });
 
         // Update slider value display
