@@ -379,7 +379,6 @@
                             max="50"
                             value="20"
                             class="slider"
-                            disabled
                           />
                           <span class="slider-value">20</span>
                         </div>
@@ -2170,7 +2169,21 @@
                           const distance = Math.sqrt(dr * dr + dg * dg + db * db);
                           if (distance <= scaledThreshold) {
                               mask[idx] = 255;
-                              stack.push({ x: x + 1, y: y }, { x: x - 1, y: y }, { x: x, y: y + 1 }, { x: x, y: y - 1 });
+
+                              // Add neighbors to stack
+                              const neighbors = [
+                                  {x: x + 1, y: y}, {x: x - 1, y: y}, {x: x, y: y + 1}, {x: x, y: y - 1},
+                                  {x: x + 1, y: y + 1}, {x: x - 1, y: y - 1}, {x: x + 1, y: y - 1}, {x: x - 1, y: y + 1}
+                              ];
+
+                              for (const neighbor of neighbors) {
+                                  if (neighbor.x >= 0 && neighbor.x < width && neighbor.y >= 0 && neighbor.y < height) {
+                                      const neighborIdx = neighbor.y * width + neighbor.x;
+                                      if (!visited[neighborIdx]) {
+                                          stack.push(neighbor);
+                                      }
+                                  }
+                              }
                           }
                           processedCount++;
                       }
