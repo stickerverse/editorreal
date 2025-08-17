@@ -355,22 +355,34 @@
                   <div class="tab-content" id="tab-edit-content">
                     <div class="tab-section">
                       <h4 class="section-title">Background Removal</h4>
-                      <div class="control-group">
-                        <label class="control-label" for="bg-threshold-slider">Removal Threshold</label>
+                      <button id="remove-bg-btn" class="action-btn">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path d="M9 12l2 2 4-4" />
+                          <circle cx="12" cy="12" r="10" />
+                        </svg>
+                        Remove Background
+                      </button>
+                      <div class="control-group" style="margin-top: 16px;">
+                        <label class="control-label" for="bg-threshold-slider">Fine-tune Threshold</label>
                         <div class="slider-container">
                           <input
                             type="range"
                             id="bg-threshold-slider"
                             min="0"
-                            max="100"
-                            value="0"
+                            max="50"
+                            value="20"
                             class="slider"
+                            disabled
                           />
-                          <span class="slider-value">0</span>
+                          <span class="slider-value">20</span>
                         </div>
-                        <p class="control-note" style="font-size: 12px; color: var(--muted); margin-top: 8px;">
-                          Adjust the sensitivity of the background removal. Set to 0 to restore original.
-                        </p>
                       </div>
                       <button id="reset-image-btn" class="action-btn secondary" style="margin-top: 16px;">
                         <svg
@@ -396,42 +408,44 @@
 
                     <div class="tab-section">
                       <h4 class="section-title">Border & Outline</h4>
-
-                      <div class="control-group">
-                        <label class="control-label">Border Thickness</label>
-                        <div class="slider-container">
-                          <input
-                            type="range"
-                            id="border-thickness"
-                            min="0"
-                            max="20"
-                            value="0"
-                            class="slider"
-                          />
-                          <span class="slider-value">0px</span>
+                      <button id="add-border-btn" class="action-btn">Add Border</button>
+                      <div id="border-controls" style="display: none; margin-top: 16px;">
+                        <div class="control-group">
+                          <label class="control-label">Border Thickness</label>
+                          <div class="slider-container">
+                            <input
+                              type="range"
+                              id="border-thickness"
+                              min="1"
+                              max="50"
+                              value="5"
+                              class="slider"
+                            />
+                            <span class="slider-value">5px</span>
+                          </div>
                         </div>
-                      </div>
 
-                      <div class="control-group">
-                        <label class="control-label">Border Color</label>
-                        <div class="color-picker-container">
-                          <input
-                            type="color"
-                            id="border-color"
-                            value="#7dd3fc"
-                            class="color-picker"
-                          />
-                          <span class="color-preview"></span>
+                        <div class="control-group">
+                          <label class="control-label">Border Color</label>
+                          <div class="color-picker-container">
+                            <input
+                              type="color"
+                              id="border-color"
+                              value="#ffffff"
+                              class="color-picker"
+                            />
+                            <span class="color-preview" style="background-color: #ffffff;"></span>
+                          </div>
                         </div>
-                      </div>
 
-                      <div class="control-group">
-                        <label class="control-label">Border Style</label>
-                        <select id="border-style" class="style-select">
-                          <option value="solid">Solid</option>
-                          <option value="dashed">Dashed</option>
-                          <option value="dotted">Dotted</option>
-                        </select>
+                        <div class="control-group">
+                            <label class="control-label">Corner Style</label>
+                            <select id="border-corner-style" class="style-select">
+                                <option value="round">Round</option>
+                                <option value="miter">Miter</option>
+                                <option value="bevel">Bevel</option>
+                            </select>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -3299,12 +3313,7 @@
       }
 
       function initializeEditFeatures() {
-        const borderThickness = document.getElementById('border-thickness');
-        const borderColor = document.getElementById('border-color');
-        const borderStyle = document.getElementById('border-style');
         const resetBtn = document.getElementById('reset-image-btn');
-        const bgThresholdSlider = document.getElementById('bg-threshold-slider');
-        const bgThresholdValue = bgThresholdSlider.nextElementSibling;
 
         // --- Debounce Utility ---
         function debounce(func, delay) {
@@ -3316,31 +3325,36 @@
             };
         }
 
-        // --- Background Removal Logic ---
-        const processBgRemoval = async (threshold) => {
+        // --- Background Removal ---
+        const removeBgBtn = document.getElementById('remove-bg-btn');
+        const bgThresholdSlider = document.getElementById('bg-threshold-slider');
+        const bgThresholdValue = bgThresholdSlider.nextElementSibling;
+
+        const processBgRemoval = async (threshold, isInitial) => {
             const activeObj = window.imageEditorInstance?.canvas.getActiveObject();
             if (!activeObj || activeObj.type !== 'image') {
-                bgThresholdSlider.value = 0;
-                bgThresholdValue.textContent = '0';
-                // alert('Please select an image first.');
+                if (isInitial) alert('Please select an image first.');
                 return;
             }
 
-            // Store original image data on first run
-            if (!activeObj.originalSrc) {
+            if (isInitial && !activeObj.originalSrc) {
+                activeObj.originalSrc = activeObj.getSrc();
+            } else if (!activeObj.originalSrc) {
                 activeObj.originalSrc = activeObj.getSrc();
             }
 
-            // If threshold is 0, restore original image
             if (threshold === 0) {
                 fabric.Image.fromURL(activeObj.originalSrc, (originalImg) => {
                     originalImg.set({
                         scaleX: activeObj.scaleX, scaleY: activeObj.scaleY, left: activeObj.left, top: activeObj.top,
                         originX: activeObj.originX, originY: activeObj.originY, angle: activeObj.angle,
+                        originalSrc: activeObj.originalSrc
                     });
                     const canvas = window.imageEditorInstance.canvas;
+                    const index = canvas.getObjects().indexOf(activeObj);
                     canvas.remove(activeObj);
                     canvas.add(originalImg);
+                    canvas.moveTo(originalImg, index);
                     canvas.setActiveObject(originalImg);
                     canvas.renderAll();
                     if (window.imageEditorInstance.saveState) window.imageEditorInstance.saveState();
@@ -3348,7 +3362,7 @@
                 return;
             }
 
-            // --- Use a temporary canvas to get image data ---
+            // Simplified for brevity - full logic is complex
             const tempCanvas = document.createElement('canvas');
             const imgEl = activeObj._element;
             tempCanvas.width = imgEl.naturalWidth;
@@ -3357,97 +3371,192 @@
             ctx.drawImage(imgEl, 0, 0);
             let imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
 
-            // The rest of the logic is simplified as we don't need the complex progress overlay for a slider
-            try {
-                const result = await BackgroundRemover.removeBackground(imageData, threshold, 2, 3);
+            const result = await BackgroundRemover.removeBackground(imageData, threshold, 2, 3);
 
-                let hasVisiblePixels = false;
-                for (let i = 3; i < result.data.length; i += 4) { if (result.data[i] > 0) { hasVisiblePixels = true; break; } }
-                if (!hasVisiblePixels) {
-                    console.warn('Background removal resulted in a fully transparent image.');
-                    // Don't throw an error, just leave the image as is before this step
-                    return;
-                }
+            let hasVisiblePixels = false;
+            for (let i = 3; i < result.data.length; i += 4) { if (result.data[i] > 0) { hasVisiblePixels = true; break; } }
+            if (!hasVisiblePixels) return;
 
-                ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-                ctx.putImageData(result, 0, 0);
-                const newUrl = tempCanvas.toDataURL('image/png');
+            ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+            ctx.putImageData(result, 0, 0);
+            const newUrl = tempCanvas.toDataURL('image/png');
 
-                const newImg = await new Promise((resolve, reject) => {
-                    fabric.Image.fromURL(newUrl, (img) => {
-                        if (!img || !img.width || !img.height) reject(new Error('Failed to create image from result'));
-                        else resolve(img);
-                    }, { crossOrigin: 'anonymous' });
-                });
+            // Generate contour path during removal and store it
+            const contourPathString = ContourDetector.generateContourPath(result);
 
-                newImg.set({
-                    scaleX: activeObj.scaleX, scaleY: activeObj.scaleY, left: activeObj.left, top: activeObj.top,
-                    originX: activeObj.originX, originY: activeObj.originY, angle: activeObj.angle,
-                    originalSrc: activeObj.originalSrc // Preserve original source
-                });
+            const newImg = await new Promise((resolve, reject) => {
+                fabric.Image.fromURL(newUrl, (img) => {
+                    if (!img || !img.width || !img.height) reject(new Error('Failed to create image from result'));
+                    else resolve(img);
+                }, { crossOrigin: 'anonymous' });
+            });
 
-                const canvas = window.imageEditorInstance.canvas;
-                const index = canvas.getObjects().indexOf(activeObj);
-                canvas.remove(activeObj);
-                canvas.add(newImg);
-                canvas.moveTo(newImg, index);
-                canvas.setActiveObject(newImg);
-                canvas.renderAll();
-                if (window.imageEditorInstance.saveState) window.imageEditorInstance.saveState();
+            newImg.set({
+                scaleX: activeObj.scaleX, scaleY: activeObj.scaleY, left: activeObj.left, top: activeObj.top,
+                originX: activeObj.originX, originY: activeObj.originY, angle: activeObj.angle,
+                originalSrc: activeObj.originalSrc,
+                contourPath: contourPathString // Store the path
+            });
 
-            } catch (error) {
-                console.error("Background removal slider failed:", error);
-            }
+            const canvas = window.imageEditorInstance.canvas;
+            const index = canvas.getObjects().indexOf(activeObj);
+            canvas.remove(activeObj);
+            canvas.add(newImg);
+            canvas.moveTo(newImg, index);
+            canvas.setActiveObject(newImg);
+            canvas.renderAll();
+            if (window.imageEditorInstance.saveState) window.imageEditorInstance.saveState();
         };
 
         const debouncedBgRemoval = debounce(processBgRemoval, 250);
-
+        removeBgBtn.addEventListener('click', async () => {
+            const threshold = parseInt(bgThresholdSlider.value, 10);
+            const originalText = removeBgBtn.innerHTML;
+            removeBgBtn.innerHTML = 'Processing...';
+            removeBgBtn.disabled = true;
+            try {
+                await processBgRemoval(threshold, true);
+                bgThresholdSlider.disabled = false;
+            } catch (error) {
+                console.error("Initial background removal failed:", error);
+            } finally {
+                removeBgBtn.innerHTML = originalText;
+                removeBgBtn.disabled = false;
+            }
+        });
         bgThresholdSlider.addEventListener('input', (e) => {
             const threshold = parseInt(e.target.value, 10);
             bgThresholdValue.textContent = threshold;
-            debouncedBgRemoval(threshold);
+            debouncedBgRemoval(threshold, false);
         });
 
-        // Update slider value display
-        borderThickness.addEventListener('input', (e) => {
-          const value = e.target.value;
-          e.target.nextElementSibling.textContent = value + 'px';
-          applyBorderEffect(value, borderColor.value, borderStyle.value);
+        // --- Contour Border ---
+        const addBorderBtn = document.getElementById('add-border-btn');
+        const borderControls = document.getElementById('border-controls');
+        const borderThickness = document.getElementById('border-thickness');
+        const borderColor = document.getElementById('border-color');
+        const borderCornerStyle = document.getElementById('border-corner-style');
+
+        addBorderBtn.addEventListener('click', () => {
+            const activeObj = window.imageEditorInstance?.canvas.getActiveObject();
+            if (!activeObj || !activeObj.contourPath) {
+                alert('Please remove the background first to create a contour for the border.');
+                return;
+            }
+            if (activeObj.isBordered) return; // Don't add multiple borders
+
+            const borderPath = new fabric.Path(activeObj.contourPath, {
+                stroke: borderColor.value,
+                strokeWidth: parseInt(borderThickness.value, 10),
+                strokeLineJoin: borderCornerStyle.value,
+                fill: 'transparent',
+                // Position relative to the image
+                left: activeObj.left,
+                top: activeObj.top,
+                originX: 'center',
+                originY: 'center'
+            });
+
+            // We need to handle the fact that the image might be scaled/rotated
+            // For simplicity, let's assume we group them at their current state
+            const group = new fabric.Group([activeObj, borderPath], {
+                left: activeObj.left,
+                top: activeObj.top,
+                angle: activeObj.angle,
+                scaleX: activeObj.scaleX,
+                scaleY: activeObj.scaleY,
+                isBordered: true,
+                contourBorder: borderPath, // Reference to the border
+                // Add the same control styling as other objects
+                cornerStyle: 'circle',
+                cornerColor: 'rgba(125, 211, 252, 0.8)',
+                cornerSize: 12,
+                transparentCorners: false,
+                borderColor: 'rgba(125, 211, 252, 0.8)',
+                borderScaleFactor: 2,
+            });
+
+            const canvas = window.imageEditorInstance.canvas;
+            const index = canvas.getObjects().indexOf(activeObj);
+            canvas.remove(activeObj);
+            canvas.add(group);
+            canvas.moveTo(group, index);
+            canvas.setActiveObject(group);
+
+            borderControls.style.display = 'block';
+            if (window.imageEditorInstance.saveState) window.imageEditorInstance.saveState();
         });
 
-        // Color change
-        borderColor.addEventListener('change', (e) => {
-          const colorPreview = e.target.parentElement.querySelector('.color-preview');
-          colorPreview.style.backgroundColor = e.target.value;
-          applyBorderEffect(borderThickness.value, e.target.value, borderStyle.value);
-        });
+        function applyBorderEffect() {
+            const activeGroup = window.imageEditorInstance?.canvas.getActiveObject();
+            if (!activeGroup || !activeGroup.isBordered) return;
 
-        // Style change
-        borderStyle.addEventListener('change', (e) => {
-          applyBorderEffect(borderThickness.value, borderColor.value, e.target.value);
-        });
+            const borderPath = activeGroup.contourBorder;
+            if (borderPath) {
+                borderPath.set({
+                    strokeWidth: parseInt(borderThickness.value, 10),
+                    stroke: borderColor.value,
+                    strokeLineJoin: borderCornerStyle.value
+                });
+                window.imageEditorInstance.canvas.renderAll();
+                if (window.imageEditorInstance.saveState) window.imageEditorInstance.saveState();
+            }
+        }
+
+        borderThickness.addEventListener('input', applyBorderEffect);
+        borderColor.addEventListener('change', applyBorderEffect);
+        borderCornerStyle.addEventListener('change', applyBorderEffect);
 
         // Reset functionality
         resetBtn.addEventListener('click', () => {
-          const activeObj = window.imageEditorInstance?.canvas.getActiveObject();
-          if (activeObj && activeObj.type === 'image') {
-            // Reset border effects
-            activeObj.set({
-              stroke: null,
-              strokeWidth: 0,
-              strokeDashArray: null
-            });
-            window.imageEditorInstance.canvas.renderAll();
+            const activeObj = window.imageEditorInstance?.canvas.getActiveObject();
+            if (!activeObj) return;
 
-            // Reset UI
-            borderThickness.value = 0;
-            borderThickness.nextElementSibling.textContent = '0px';
-          }
+            let imageToRestore = null;
+            if (activeObj.isBordered && activeObj.type === 'group') {
+                // It's a group with a border, find the main image within it
+                imageToRestore = activeObj.getObjects('image')[0];
+            } else if (activeObj.type === 'image' && activeObj.originalSrc) {
+                // It's a simple image that has been processed
+                imageToRestore = activeObj;
+            }
+
+            if (imageToRestore && imageToRestore.originalSrc) {
+                fabric.Image.fromURL(imageToRestore.originalSrc, (originalImg) => {
+                    const canvas = window.imageEditorInstance.canvas;
+                    const index = canvas.getObjects().indexOf(activeObj);
+
+                    originalImg.set({
+                        left: activeObj.left,
+                        top: activeObj.top,
+                        angle: activeObj.angle,
+                        scaleX: activeObj.scaleX,
+                        scaleY: activeObj.scaleY,
+                        originX: activeObj.originX,
+                        originY: activeObj.originY,
+                    });
+
+                    canvas.remove(activeObj);
+                    canvas.add(originalImg);
+                    canvas.moveTo(originalImg, index);
+                    canvas.setActiveObject(originalImg);
+                    canvas.renderAll();
+
+                    // Reset UI controls
+                    borderControls.style.display = 'none';
+                    bgThresholdSlider.disabled = true;
+                    bgThresholdSlider.value = 20;
+                    bgThresholdValue.textContent = '20';
+                    borderThickness.value = 5;
+                    document.querySelector('#border-thickness + .slider-value').textContent = '5px';
+
+
+                    if (window.imageEditorInstance.saveState) window.imageEditorInstance.saveState();
+                }, { crossOrigin: 'anonymous' });
+            } else {
+                console.log("Nothing to reset on this object.");
+            }
         });
-
-        // Initialize color preview
-        const colorPreview = borderColor.parentElement.querySelector('.color-preview');
-        colorPreview.style.backgroundColor = borderColor.value;
       }
 
       function applyBorderEffect(thickness, color, style) {
