@@ -3337,77 +3337,103 @@
 
         // --- Background Removal Logic ---
         const processBgRemoval = async (threshold, isInitial) => {
-            const activeObj = window.imageEditorInstance?.canvas.getActiveObject();
-            if (!activeObj || (activeObj.type !== 'image' && activeObj.type !== 'group')) {
-                if (isInitial) alert('Please select an image first.');
-                return;
+            console.log(`--- Starting Background Removal (isInitial: ${isInitial}, threshold: ${threshold}) ---`);
+            try {
+                const activeObj = window.imageEditorInstance?.canvas.getActiveObject();
+                if (!activeObj) {
+                    if (isInitial) alert('Please select an object first.');
+                    return;
+                }
+
+                // Find the target image, whether it's a standalone image or inside a group
+                let image = null;
+                if (activeObj.type === 'image') {
+                    image = activeObj;
+                } else if (activeObj.type === 'group') {
+                    image = activeObj.getObjects('image')[0];
+                }
+
+                console.log('Active object:', activeObj, 'Found image:', image);
+
+                if (!image) {
+                    console.error('No image found in the selection.');
+                    if (isInitial) alert('Please select an image or a group containing an image.');
+                    return;
+                }
+
+                if (!image.originalSrc) {
+                    console.log('Storing original source for the first time.');
+                    image.originalSrc = image.getSrc();
+                }
+
+                if (threshold === 0) {
+                    console.log('Threshold is 0, restoring original image.');
+                    return restoreOriginalImage(activeObj, image);
+                }
+
+                const imgEl = image._element;
+                console.log('Image element:', imgEl, 'Dimensions:', imgEl.naturalWidth, 'x', imgEl.naturalHeight);
+                if (!imgEl) {
+                    console.error('Image element is missing.');
+                    return;
+                }
+
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = imgEl.naturalWidth;
+                tempCanvas.height = imgEl.naturalHeight;
+                const ctx = tempCanvas.getContext('2d');
+                ctx.drawImage(imgEl, 0, 0);
+                let imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                console.log('Got imageData:', imageData.width, 'x', imageData.height);
+
+                const result = await BackgroundRemover.removeBackground(imageData, threshold, 2, 3);
+                console.log('Background removal processing complete.');
+
+                let hasVisiblePixels = false;
+                for (let i = 3; i < result.data.length; i += 4) { if (result.data[i] > 0) { hasVisiblePixels = true; break; } }
+                if (!hasVisiblePixels) {
+                    console.warn('Background removal resulted in a fully transparent image.');
+                    return;
+                }
+
+                ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                ctx.putImageData(result, 0, 0);
+                const newUrl = tempCanvas.toDataURL('image/png');
+
+                const contourPathString = ContourDetector.generateContourPath(result);
+                console.log('Generated contour path string:', contourPathString ? contourPathString.substring(0, 100) + '...' : 'null');
+
+                const newImg = await new Promise((resolve, reject) => {
+                    fabric.Image.fromURL(newUrl, (img) => {
+                        if (!img || !img.width || !img.height) reject(new Error('Failed to create image from result'));
+                        else resolve(img);
+                    }, { crossOrigin: 'anonymous' });
+                });
+
+                newImg.set({
+                    originalSrc: image.originalSrc,
+                    contourPath: contourPathString
+                });
+
+                const canvas = window.imageEditorInstance.canvas;
+                newImg.set({
+                    left: activeObj.left, top: activeObj.top, angle: activeObj.angle,
+                    scaleX: activeObj.scaleX, scaleY: activeObj.scaleY,
+                    originX: 'center', originY: 'center'
+                });
+
+                const index = canvas.getObjects().indexOf(activeObj);
+                canvas.remove(activeObj);
+                canvas.add(newImg);
+                canvas.moveTo(newImg, index);
+                canvas.setActiveObject(newImg);
+                canvas.renderAll();
+                if (window.imageEditorInstance.saveState) window.imageEditorInstance.saveState();
+                console.log('--- Background Removal Finished ---');
+            } catch (e) {
+                console.error('CRASH in processBgRemoval:', e);
+                alert('A crash occurred during background removal. See console for details.');
             }
-
-            // Find the actual image, whether it's selected or in a group
-            const image = (activeObj.type === 'group' && activeObj.isBordered) ? activeObj.getObjects('image')[0] : activeObj;
-            if (!image) return;
-
-
-            if (isInitial && !image.originalSrc) {
-                image.originalSrc = image.getSrc();
-            } else if (!image.originalSrc) {
-                image.originalSrc = image.getSrc();
-            }
-
-            if (threshold === 0) {
-                return restoreOriginalImage(activeObj, image);
-            }
-
-            const imgEl = image._element;
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = imgEl.naturalWidth;
-            tempCanvas.height = imgEl.naturalHeight;
-            const ctx = tempCanvas.getContext('2d');
-            ctx.drawImage(imgEl, 0, 0);
-            let imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-
-            const result = await BackgroundRemover.removeBackground(imageData, threshold, 2, 3);
-
-            let hasVisiblePixels = false;
-            for (let i = 3; i < result.data.length; i += 4) { if (result.data[i] > 0) { hasVisiblePixels = true; break; } }
-            if (!hasVisiblePixels) {
-                console.warn('Background removal resulted in a fully transparent image.');
-                return; // Or restore original? For now, do nothing.
-            }
-
-            ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-            ctx.putImageData(result, 0, 0);
-            const newUrl = tempCanvas.toDataURL('image/png');
-
-            const contourPathString = ContourDetector.generateContourPath(result);
-
-            const newImg = await new Promise((resolve, reject) => {
-                fabric.Image.fromURL(newUrl, (img) => {
-                    if (!img || !img.width || !img.height) reject(new Error('Failed to create image from result'));
-                    else resolve(img);
-                }, { crossOrigin: 'anonymous' });
-            });
-
-            newImg.set({
-                originalSrc: image.originalSrc,
-                contourPath: contourPathString
-            });
-
-            // Replace the old image with the new one, preserving transforms
-            const canvas = window.imageEditorInstance.canvas;
-            newImg.set({
-                left: activeObj.left, top: activeObj.top, angle: activeObj.angle,
-                scaleX: activeObj.scaleX, scaleY: activeObj.scaleY,
-                originX: 'center', originY: 'center'
-            });
-
-            const index = canvas.getObjects().indexOf(activeObj);
-            canvas.remove(activeObj);
-            canvas.add(newImg);
-            canvas.moveTo(newImg, index);
-            canvas.setActiveObject(newImg);
-            canvas.renderAll();
-            if (window.imageEditorInstance.saveState) window.imageEditorInstance.saveState();
         };
 
         // --- Event Listeners ---
@@ -3446,7 +3472,7 @@
             }
             if (activeObj.isBordered) return;
 
-            activeObj.clone((clonedImg) => {
+            image.clone((clonedImg) => {
                 clonedImg.set({ left: 0, top: 0, originX: 'center', originY: 'center' });
 
                 const borderPath = new fabric.Path(clonedImg.contourPath, {
@@ -3464,7 +3490,7 @@
                     originX: 'center', originY: 'center',
                     isBordered: true,
                     contourBorder: borderPath,
-                    originalSrc: clonedImg.originalSrc, // Carry over original src
+                    originalSrc: clonedImg.originalSrc,
                     cornerStyle: 'circle', cornerColor: 'rgba(125, 211, 252, 0.8)',
                     cornerSize: 12, transparentCorners: false,
                     borderColor: 'rgba(125, 211, 252, 0.8)', borderScaleFactor: 2,
@@ -3505,7 +3531,10 @@
         borderCornerStyle.addEventListener('change', applyBorderEffect);
 
         const restoreOriginalImage = (objToReplace, imageWithSrc) => {
-            if (!imageWithSrc || !imageWithSrc.originalSrc) return;
+            if (!imageWithSrc || !imageWithSrc.originalSrc) {
+                console.log("No original source to restore from.");
+                return;
+            }
             fabric.Image.fromURL(imageWithSrc.originalSrc, (originalImg) => {
                 const canvas = window.imageEditorInstance.canvas;
                 const index = canvas.getObjects().indexOf(objToReplace);
@@ -3526,8 +3555,14 @@
         resetBtn.addEventListener('click', () => {
             const activeObj = window.imageEditorInstance?.canvas.getActiveObject();
             if (!activeObj) return;
-            const imageToRestore = (activeObj.type === 'group' && activeObj.isBordered) ? activeObj : activeObj;
-            restoreOriginalImage(activeObj, imageToRestore);
+
+            const imageToRestore = (activeObj.type === 'group' && activeObj.isBordered) ? activeObj.getObjects('image')[0] : activeObj;
+
+            if (imageToRestore && imageToRestore.originalSrc) {
+                restoreOriginalImage(activeObj, imageToRestore);
+            } else {
+                console.log("Nothing to reset on this object.");
+            }
 
             // Reset UI controls
             borderControls.style.display = 'none';
