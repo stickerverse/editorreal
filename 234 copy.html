@@ -2112,103 +2112,71 @@
     <script>
       // Performance-optimized background removal with Web Worker support
       class BackgroundRemover {
-        static async removeBackground(imageData, threshold = 30, smoothing = 2, featherRadius = 3, onProgress = null) {
+        static async removeBackground(imageData, threshold = 30, smoothing = 2, featherRadius = 3, onProgress = null, onWorkerCreated = null) {
           // Check if Web Workers are available
           if (typeof Worker !== 'undefined') {
-            return this.removeBackgroundWorker(imageData, threshold, smoothing, featherRadius, onProgress);
+            return this.removeBackgroundWorker(imageData, threshold, smoothing, featherRadius, onProgress, onWorkerCreated);
           } else {
             console.warn("Web Workers not supported. Falling back to chunked processing on the main thread. This might be slow.");
             return this.removeBackgroundChunked(imageData, threshold, smoothing, featherRadius, onProgress);
           }
         }
 
-        static async removeBackgroundWorker(imageData, threshold, smoothing, featherRadius, onProgress) {
+        static async removeBackgroundWorker(imageData, threshold, smoothing, featherRadius, onProgress, onWorkerCreated) {
           return new Promise((resolve, reject) => {
             const workerCode = `
               self.onmessage = function(e) {
                   const { imageData, threshold, smoothing, featherRadius } = e.data;
-
                   const width = imageData.width;
                   const height = imageData.height;
                   const data = imageData.data;
                   const mask = new Uint8Array(width * height);
                   const visited = new Uint8Array(width * height);
-
-                  // --- Flood fill ---
                   function floodFill(startX, startY) {
                       const stack = [{ x: startX, y: startY }];
                       const startIdx = startY * width + startX;
                       if (startIdx < 0 || startIdx >= data.length / 4) return;
-
-                      const startColor = {
-                          r: data[startIdx * 4],
-                          g: data[startIdx * 4 + 1],
-                          b: data[startIdx * 4 + 2]
-                      };
+                      const startColor = { r: data[startIdx * 4], g: data[startIdx * 4 + 1], b: data[startIdx * 4 + 2] };
                       const scaledThreshold = (threshold / 100) * 255;
-
                       let processedCount = 0;
                       while (stack.length > 0) {
                           const { x, y } = stack.pop();
-
                           if (x < 0 || x >= width || y < 0 || y >= height) continue;
-
                           const idx = y * width + x;
                           if (visited[idx]) continue;
                           visited[idx] = 1;
-
                           const pixelIdx = idx * 4;
-                          const currentColor = {
-                              r: data[pixelIdx],
-                              g: data[pixelIdx + 1],
-                              b: data[pixelIdx + 2]
-                          };
-
+                          const currentColor = { r: data[pixelIdx], g: data[pixelIdx + 1], b: data[pixelIdx + 2] };
                           const dr = currentColor.r - startColor.r;
                           const dg = currentColor.g - startColor.g;
                           const db = currentColor.b - startColor.b;
                           const distance = Math.sqrt(dr * dr + dg * dg + db * db);
-
                           if (distance <= scaledThreshold) {
                               mask[idx] = 255;
-                              stack.push({ x: x + 1, y: y });
-                              stack.push({ x: x - 1, y: y });
-                              stack.push({ x: x, y: y + 1 });
-                              stack.push({ x: x, y: y - 1 });
+                              stack.push({ x: x + 1, y: y }, { x: x - 1, y: y }, { x: x, y: y + 1 }, { x: x, y: y - 1 });
                           }
-
                           processedCount++;
-                          if (processedCount % 10000 === 0) {
-                              // Optional: post progress update during flood fill
-                          }
                       }
                   }
-
                   self.postMessage({ type: 'progress', progress: 10, message: 'Analyzing edges...' });
-
                   const samplePoints = [
                       { x: 0, y: 0 }, { x: width - 1, y: 0 }, { x: 0, y: height - 1 }, { x: width - 1, y: height - 1 },
                       { x: Math.floor(width / 2), y: 0 }, { x: Math.floor(width / 2), y: height - 1 },
                       { x: 0, y: Math.floor(height / 2) }, { x: width - 1, y: Math.floor(height / 2) }
                   ];
-
                   samplePoints.forEach(point => {
                       if (!visited[point.y * width + point.x]) {
                           floodFill(point.x, point.y);
                       }
                   });
-
                   self.postMessage({ type: 'progress', progress: 50, message: 'Inverting mask...' });
                   for (let i = 0; i < mask.length; i++) {
                       mask[i] = mask[i] === 255 ? 0 : 255;
                   }
-
-                  // --- Smoothing ---
                   if (smoothing > 0) {
                       self.postMessage({ type: 'progress', progress: 60, message: 'Smoothing mask...' });
                       let temp = new Uint8Array(mask);
                       for (let s = 0; s < smoothing; s++) {
-                          // Erosion
                           for (let y = 1; y < height - 1; y++) {
                               for (let x = 1; x < width - 1; x++) {
                                   const idx = y * width + x;
@@ -2222,7 +2190,6 @@
                               }
                           }
                           temp.set(mask);
-                          // Dilation
                           for (let y = 1; y < height - 1; y++) {
                               for (let x = 1; x < width - 1; x++) {
                                   const idx = y * width + x;
@@ -2239,8 +2206,6 @@
                           self.postMessage({ type: 'progress', progress: 60 + (s + 1) * (20 / smoothing), message: 'Smoothing...' });
                       }
                   }
-
-                  // --- Feathering ---
                   if (featherRadius > 0) {
                       self.postMessage({ type: 'progress', progress: 85, message: 'Feathering edges...' });
                       const feathered = new Uint8Array(mask);
@@ -2263,9 +2228,7 @@
                       }
                       mask.set(feathered);
                   }
-
                   self.postMessage({ type: 'progress', progress: 95, message: 'Finalizing image...' });
-
                   const outputImage = new ImageData(width, height);
                   for (let i = 0; i < data.length; i += 4) {
                       const idx = i / 4;
@@ -2274,13 +2237,16 @@
                       outputImage.data[i + 2] = data[i + 2];
                       outputImage.data[i + 3] = mask[idx];
                   }
-
                   self.postMessage({ type: 'result', result: outputImage });
               };
             `;
             const blob = new Blob([workerCode], { type: 'application/javascript' });
             const blobUrl = URL.createObjectURL(blob);
             const worker = new Worker(blobUrl);
+
+            if (onWorkerCreated) {
+                onWorkerCreated(worker, blobUrl);
+            }
 
             worker.onmessage = function(e) {
                 if (e.data.type === 'progress') {
@@ -2289,7 +2255,7 @@
                     }
                 } else if (e.data.type === 'result') {
                     worker.terminate();
-                    URL.revokeObjectURL(blobUrl); // Clean up the object URL
+                    URL.revokeObjectURL(blobUrl);
                     resolve(e.data.result);
                 }
             };
@@ -3344,256 +3310,165 @@
             return;
           }
 
-          // Create progress overlay
+          // --- Create Progress Overlay ---
           const progressOverlay = document.createElement('div');
           progressOverlay.id = 'bg-removal-progress';
           progressOverlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-            color: white;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center;
+            align-items: center; z-index: 10000; color: white;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           `;
-
           const progressContent = document.createElement('div');
           progressContent.style.cssText = `
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 30px;
-            text-align: center;
-            backdrop-filter: blur(10px);
-            min-width: 300px;
+            background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 30px;
+            text-align: center; backdrop-filter: blur(10px); min-width: 300px;
           `;
-
           const progressTitle = document.createElement('h3');
           progressTitle.textContent = 'Removing Background';
           progressTitle.style.cssText = 'margin: 0 0 15px 0; font-size: 18px; font-weight: 600;';
-
           const progressBar = document.createElement('div');
           progressBar.style.cssText = `
-            width: 100%;
-            height: 8px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 15px 0;
+            width: 100%; height: 8px; background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px; overflow: hidden; margin: 15px 0;
           `;
-
           const progressFill = document.createElement('div');
           progressFill.style.cssText = `
-            height: 100%;
-            background: linear-gradient(90deg, #60a5fa, #3b82f6);
-            width: 0%;
-            transition: width 0.3s ease;
-            border-radius: 4px;
+            height: 100%; background: linear-gradient(90deg, #60a5fa, #3b82f6);
+            width: 0%; transition: width 0.3s ease; border-radius: 4px;
           `;
-
           const progressText = document.createElement('div');
           progressText.textContent = 'Initializing...';
           progressText.style.cssText = 'font-size: 14px; color: rgba(255, 255, 255, 0.8); margin-top: 10px;';
+          const closeBtn = document.createElement('button');
+          closeBtn.textContent = 'Cancel';
+          closeBtn.disabled = true;
+          closeBtn.style.cssText = `
+            margin-top: 20px; padding: 8px 16px; border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 6px; background: rgba(255, 255, 255, 0.1); color: white;
+            cursor: pointer; transition: all 0.2s; opacity: 0.5;
+          `;
+          const closeOverlay = () => {
+            if (progressOverlay.parentNode) {
+              progressOverlay.parentNode.removeChild(progressOverlay);
+            }
+          };
+          closeBtn.onclick = closeOverlay;
+          closeBtn.onmouseover = () => { if (!closeBtn.disabled) closeBtn.style.background = 'rgba(255, 255, 255, 0.2)'; };
+          closeBtn.onmouseout = () => { if (!closeBtn.disabled) closeBtn.style.background = 'rgba(255, 255, 255, 0.1)'; };
 
           progressBar.appendChild(progressFill);
           progressContent.appendChild(progressTitle);
           progressContent.appendChild(progressBar);
           progressContent.appendChild(progressText);
+          progressContent.appendChild(closeBtn);
           progressOverlay.appendChild(progressContent);
           document.body.appendChild(progressOverlay);
 
-          // Show loading state on button
+          // --- Worker and Main Logic ---
+          let worker = null; // Keep worker in scope to terminate on cancel
           const originalText = removeBgBtn.innerHTML;
           removeBgBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> Processing...';
           removeBgBtn.disabled = true;
+          closeBtn.disabled = false; // Allow cancellation
+          closeBtn.style.opacity = '1';
+
+          closeBtn.onclick = () => {
+            if (worker) {
+              worker.terminate();
+              console.log('Background removal cancelled by user.');
+            }
+            closeOverlay();
+            removeBgBtn.innerHTML = originalText;
+            removeBgBtn.disabled = false;
+          };
 
           try {
-            // Get image data
+            // Get and downscale image data
             const bgCanvas = document.getElementById('bg-canvas');
             const imgEl = activeObj._element;
             bgCanvas.width = imgEl.naturalWidth;
             bgCanvas.height = imgEl.naturalHeight;
             const ctx = bgCanvas.getContext('2d');
             ctx.drawImage(imgEl, 0, 0);
-
             let imageData = ctx.getImageData(0, 0, bgCanvas.width, bgCanvas.height);
-            console.log('Original image data:', imageData.width, 'x', imageData.height);
-
-            // Downscale image if it's too large to prevent worker memory issues
             const MAX_DIM = 1024;
             if (imageData.width > MAX_DIM || imageData.height > MAX_DIM) {
-                console.log('Downscaling image for performance...');
-                const scale = Math.min(MAX_DIM / imageData.width, MAX_DIM / imageData.height);
-                const newWidth = Math.round(imageData.width * scale);
-                const newHeight = Math.round(imageData.height * scale);
-
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = newWidth;
-                tempCanvas.height = newHeight;
-                const tempCtx = tempCanvas.getContext('2d');
-
-                // Draw original image onto a temporary canvas, then scale it down
-                const originalCanvas = document.createElement('canvas');
-                originalCanvas.width = imageData.width;
-                originalCanvas.height = imageData.height;
-                originalCanvas.getContext('2d').putImageData(imageData, 0, 0);
-
-                tempCtx.drawImage(originalCanvas, 0, 0, newWidth, newHeight);
-                imageData = tempCtx.getImageData(0, 0, newWidth, newHeight);
-                console.log('Downscaled image data:', imageData.width, 'x', imageData.height);
+              const scale = Math.min(MAX_DIM / imageData.width, MAX_DIM / imageData.height);
+              const newWidth = Math.round(imageData.width * scale);
+              const newHeight = Math.round(imageData.height * scale);
+              const tempCanvas = document.createElement('canvas');
+              tempCanvas.width = newWidth; tempCanvas.height = newHeight;
+              const tempCtx = tempCanvas.getContext('2d');
+              const originalCanvas = document.createElement('canvas');
+              originalCanvas.width = imageData.width; originalCanvas.height = imageData.height;
+              originalCanvas.getContext('2d').putImageData(imageData, 0, 0);
+              tempCtx.drawImage(originalCanvas, 0, 0, newWidth, newHeight);
+              imageData = tempCtx.getImageData(0, 0, newWidth, newHeight);
             }
 
-
-            // Progress callback
+            // Setup progress handler
             const onProgress = (progress, message) => {
               progressFill.style.width = progress + '%';
               progressText.textContent = message || 'Processing...';
             };
 
-            // Process background removal with progress
-            const result = await BackgroundRemover.removeBackground(imageData, 30, 2, 3, onProgress);
-            console.log('Background removal result:', result.width, 'x', result.height);
+            // Start background removal
+            const result = await BackgroundRemover.removeBackground(imageData, 30, 2, 3, onProgress, (w) => { worker = w; });
 
             // Validate result
             let hasVisiblePixels = false;
             for (let i = 3; i < result.data.length; i += 4) {
-              if (result.data[i] > 0) {
-                hasVisiblePixels = true;
-                break;
-              }
+              if (result.data[i] > 0) { hasVisiblePixels = true; break; }
             }
-
             if (!hasVisiblePixels) {
-              throw new Error('Background removal removed the entire image. Try adjusting the threshold or selecting a different area.');
+              throw new Error('Background removal removed the entire image. Please try again.');
             }
 
-            // Update progress
-            progressText.textContent = 'Creating final image...';
-            progressFill.style.width = '95%';
-
-            // Clear canvas and put processed image data
+            // Create and place new image
             ctx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
             ctx.putImageData(result, 0, 0);
-
             const newUrl = bgCanvas.toDataURL('image/png');
-
-            // Validate data URL
-            if (newUrl.length < 1000) {
-              throw new Error('Background removal resulted in an empty image. Try adjusting the selection or using a different image.');
-            }
-
-            console.log('Background removal result URL length:', newUrl.length);
-
-            // Create new fabric image with improved error handling
             const newImg = await new Promise((resolve, reject) => {
-              fabric.Image.fromURL(newUrl,
-                function(img) {
-                  if (!img || !img.width || !img.height) {
-                    reject(new Error('Failed to create image from background removal result'));
-                    return;
-                  }
-                  resolve(img);
-                },
-                { crossOrigin: 'anonymous' }
-              );
+              fabric.Image.fromURL(newUrl, (img) => {
+                if (!img || !img.width || !img.height) reject(new Error('Failed to create image from result'));
+                else resolve(img);
+              }, { crossOrigin: 'anonymous' });
             });
-
-            console.log('New image created:', newImg.width, 'x', newImg.height);
-
-            // Apply original object properties
             newImg.set({
-              scaleX: activeObj.scaleX,
-              scaleY: activeObj.scaleY,
-              left: activeObj.left,
-              top: activeObj.top,
-              originX: activeObj.originX,
-              originY: activeObj.originY,
-              angle: activeObj.angle,
-              cornerStyle: "circle",
-              cornerColor: "rgba(125, 211, 252, 0.8)",
-              cornerSize: 12,
-              transparentCorners: false,
-              borderColor: "rgba(125, 211, 252, 0.8)",
-              borderScaleFactor: 2,
+              scaleX: activeObj.scaleX, scaleY: activeObj.scaleY, left: activeObj.left, top: activeObj.top,
+              originX: activeObj.originX, originY: activeObj.originY, angle: activeObj.angle,
+              cornerStyle: "circle", cornerColor: "rgba(125, 211, 252, 0.8)", cornerSize: 12,
+              transparentCorners: false, borderColor: "rgba(125, 211, 252, 0.8)", borderScaleFactor: 2,
             });
-
-            // Replace image on canvas with proper rendering
             const canvas = window.imageEditorInstance.canvas;
-            console.log('Canvas before removal:', canvas.getObjects().length, 'objects');
-
-            // Remove old object and add new one
             canvas.remove(activeObj);
             canvas.add(newImg);
             canvas.setActiveObject(newImg);
 
-            console.log('Canvas after replacement:', canvas.getObjects().length, 'objects');
-
-            // Force proper canvas rendering to prevent gray screen
+            // Render and save
             await new Promise(resolve => {
               canvas.renderAll();
-              canvas.requestRenderAll();
-
-              // Use requestAnimationFrame for proper rendering timing
-              requestAnimationFrame(() => {
-                canvas.renderAll();
-                requestAnimationFrame(() => {
-                  canvas.renderAll();
-                  console.log('Canvas rendering completed successfully');
-                  resolve();
-                });
-              });
+              requestAnimationFrame(() => { canvas.renderAll(); resolve(); });
             });
-
-            // Save state
             if (window.imageEditorInstance.saveState) {
               window.imageEditorInstance.saveState();
             }
 
-            // Complete progress
-            progressFill.style.width = '100%';
+            // Finalize UI
             progressText.textContent = 'Complete!';
-
-            // Remove progress overlay
-            setTimeout(() => {
-              if (progressOverlay.parentNode) {
-                progressOverlay.parentNode.removeChild(progressOverlay);
-              }
-            }, 500);
-
-            // Reset button
-            removeBgBtn.innerHTML = originalText;
-            removeBgBtn.disabled = false;
-
-            // Apply contour detection as an enhancement (non-blocking)
-            setTimeout(() => {
-              try {
-                checkImageTransparencyAndApplyContour(newImg, () => {
-                  canvas.renderAll();
-                  console.log('Contour applied to background-removed image');
-                });
-              } catch (error) {
-                console.warn('Contour detection failed, but background removal succeeded:', error);
-              }
-            }, 100);
+            closeBtn.textContent = 'Done';
+            setTimeout(closeOverlay, 1000); // Auto-close after 1s
 
           } catch (error) {
             console.error('Background removal failed:', error);
-
-            // Remove progress overlay
-            if (progressOverlay.parentNode) {
-              progressOverlay.parentNode.removeChild(progressOverlay);
-            }
-
-            // Reset button
+            progressText.textContent = 'Error: ' + (error.message || 'Unknown error');
+            closeBtn.textContent = 'Close';
+            alert(error.message || 'Background removal failed. Please try again.');
+          } finally {
+            // Re-enable main button
             removeBgBtn.innerHTML = originalText;
             removeBgBtn.disabled = false;
-
-            // Show user-friendly error message
-            alert(error.message || 'Background removal failed. Please try again.');
           }
         });
 
