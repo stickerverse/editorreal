@@ -6,8 +6,8 @@
     <title>Advanced Sticker Customizer with Image Editor</title>
     <!-- Fabric.js CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
-    <!-- BackgroundRemoval.js (U^2-Net in browser) -->
-    <script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@2.0.0/dist/backgroundRemoval.min.js"></script>
+    <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
   </head>
   <body>
     <!-- Image Editor Section -->
@@ -2133,6 +2133,22 @@
         let activeImage;
         let originalDataURL = null;
 
+        // Tab switching logic
+        const tabButtons = document.querySelectorAll(".tab-btn");
+        const tabContents = document.querySelectorAll(".tab-content");
+
+        tabButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            const tab = button.dataset.tab;
+
+            tabButtons.forEach((btn) => btn.classList.remove("active"));
+            tabContents.forEach((content) => content.classList.remove("active"));
+
+            button.classList.add("active");
+            document.getElementById(`tab-${tab}-content`).classList.add("active");
+          });
+        });
+
         // Handle image upload
         const fileUpload = document.getElementById("file-upload");
         fileUpload.addEventListener("change", (e) => {
@@ -2152,76 +2168,89 @@
           reader.readAsDataURL(file);
         });
 
-        // Utility: Apply threshold to mask
-        async function applyThreshold(blob, thresholdValue) {
-          return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-              const offCanvas = document.createElement("canvas");
-              offCanvas.width = img.width;
-              offCanvas.height = img.height;
-              const ctx = offCanvas.getContext("2d");
-              ctx.drawImage(img, 0, 0);
-              const imageData = ctx.getImageData(
-                0,
-                0,
-                offCanvas.width,
-                offCanvas.height
-              );
-              const data = imageData.data;
+        let model;
 
-              const t = thresholdValue / 50; // map 0–50 slider → 0–1
-              for (let i = 3; i < data.length; i += 4) {
-                data[i] = data[i] > t * 255 ? 255 : 0; // adjust alpha channel
-              }
-              ctx.putImageData(imageData, 0, 0);
-              offCanvas.toBlob(resolve, "image/png");
-            };
-            img.src = URL.createObjectURL(blob);
-          });
+        async function loadModel() {
+            console.log("Loading model...");
+            try {
+                await tf.setBackend('webgl');
+            } catch (e) {
+                await tf.setBackend('cpu');
+            }
+            model = await tf.loadGraphModel('https://raw.githubusercontent.com/ravzzy/ai-remove-background/main/models/model.json');
+            console.log("Model loaded.");
+        }
+        loadModel();
+
+        async function applyMask(image, maskTensor) {
+            return new Promise((resolve) => {
+                tf.tidy(() => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = image.naturalWidth;
+                    canvas.height = image.naturalHeight;
+                    const ctx = canvas.getContext('2d');
+
+                    ctx.drawImage(image, 0, 0);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                    const expandedMask = maskTensor.expandDims(-1);
+                    const resizedMask = tf.image.resizeBilinear(expandedMask, [canvas.height, canvas.width]);
+                    const maskData = resizedMask.dataSync();
+
+                    for (let i = 0; i < maskData.length; i++) {
+                        imageData.data[i * 4 + 3] = Math.round(maskData[i] * 255);
+                    }
+
+                    ctx.putImageData(imageData, 0, 0);
+                    resolve(canvas.toDataURL('image/png'));
+                });
+            });
         }
 
-        // Remove background with background-removal-js
-        document
-          .getElementById("remove-bg-btn")
-          .addEventListener("click", async () => {
+        document.getElementById("remove-bg-btn").addEventListener("click", async () => {
             if (!activeImage) {
-              alert("Please upload an image first.");
-              return;
+                alert("Please upload an image first.");
+                return;
+            }
+            if (!model) {
+                alert("Model not loaded yet. Please wait.");
+                return;
             }
 
             try {
-              const thresholdSlider = document.getElementById(
-                "bg-threshold-slider"
-              );
-              const thresholdValue = parseInt(thresholdSlider.value, 10);
+                const inputTensor = tf.tidy(() => {
+                    return tf.browser.fromPixels(activeImage._element)
+                        .resizeBilinear([320, 320])
+                        .toFloat()
+                        .div(255)
+                        .transpose([2, 0, 1])
+                        .expandDims(0);
+                });
 
-              // Use original (unmodified) upload for consistent results
-              const resultBlob = await removeBackground(originalDataURL, {
-                model: "u2net",
-                progress: (p) => console.log(`Progress: ${p * 100}%`),
-              });
+                let outputTensor = await model.predict(inputTensor);
+                if (Array.isArray(outputTensor)) {
+                    outputTensor = outputTensor[0];
+                }
 
-              // Apply threshold adjustment
-              const thresholdedBlob = await applyThreshold(
-                resultBlob,
-                thresholdValue
-              );
-              const url = URL.createObjectURL(thresholdedBlob);
+                const mask = outputTensor.squeeze();
+                const threshold = 0.5;
+                const binaryMask = mask.greater(tf.scalar(threshold)).toFloat();
 
-              // Replace canvas image
-              fabric.Image.fromURL(url, (img) => {
-                canvas.clear();
-                img.set({ left: 50, top: 50, selectable: true });
-                canvas.add(img).setActiveObject(img);
-                canvas.renderAll();
-                activeImage = img;
-              });
+                const result = await applyMask(activeImage._element, binaryMask);
+
+                fabric.Image.fromURL(result, (img) => {
+                    canvas.clear();
+                    img.set({ left: 50, top: 50, selectable: true });
+                    canvas.add(img).setActiveObject(img);
+                    canvas.renderAll();
+                    activeImage = img;
+                });
+
             } catch (err) {
-              console.error("Background removal failed:", err);
-              alert("Error removing background. Check console for details.");
+                console.error("Background removal failed:", err);
+                alert("Error removing background. Check console for details.");
             }
-          });
+        });
 
         // Reset button (restore original image)
         document
