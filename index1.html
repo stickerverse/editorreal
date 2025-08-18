@@ -1,0 +1,2493 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Advanced Sticker Customizer with Image Editor</title>
+    <!-- Fabric.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
+  </head>
+  <body>
+    <!-- Theme Controller -->
+    <div class="theme-controller">
+      <button class="theme-toggle" id="theme-toggle">
+        <svg class="theme-icon" id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <!-- Sun icon for dark theme (shows when theme is dark) -->
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/>
+          <line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/>
+          <line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <span id="theme-text">Light</span>
+      </button>
+    </div>
+
+    <!-- Image Editor Section -->
+    <div id="image-editor-section" class="shopify-section">
+      <div class="image-editor-container">
+        <div class="editor-card">
+          <div class="editor-header">
+            <h1 class="editor-title">Image Editor</h1>
+            <p class="editor-subtitle">
+              Upload and edit your images before customizing your stickers
+            </p>
+          </div>
+
+          <div class="editor-content">
+            <!-- Enhanced Toolbar -->
+            <div class="editor-toolbar">
+              <div class="toolbar-group">
+                <button
+                  class="toolbar-btn"
+                  id="select-tool"
+                  title="Select Tool (V)"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+                  </svg>
+                  <span>Select</span>
+                </button>
+                <button class="toolbar-btn" id="pan-tool" title="Pan Tool (H)">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M18 11.5V9a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v1.4" />
+                    <path d="M14 10V8a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2" />
+                    <path d="M10 9.9V9a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5" />
+                    <path
+                      d="M6 14v0a2 2 0 0 0-2 2v0a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a3 3 0 0 0-3-3H9z"
+                    />
+                  </svg>
+                  <span>Pan</span>
+                </button>
+              </div>
+
+              <div class="toolbar-separator"></div>
+
+              <div class="toolbar-group">
+                <button
+                  class="toolbar-btn"
+                  id="rotate-left"
+                  title="Rotate Left"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+                    />
+                    <path d="M3 3v5h5" />
+                  </svg>
+                  <span>Rotate L</span>
+                </button>
+                <button
+                  class="toolbar-btn"
+                  id="rotate-right"
+                  title="Rotate Right"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"
+                    />
+                    <path d="M21 3v5h-5" />
+                  </svg>
+                  <span>Rotate R</span>
+                </button>
+              </div>
+
+              <div class="toolbar-separator"></div>
+
+              <div class="toolbar-group">
+                <button class="toolbar-btn" id="zoom-in" title="Zoom In">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="M21 21l-4.35-4.35" />
+                    <line x1="11" y1="8" x2="11" y2="14" />
+                    <line x1="8" y1="11" x2="14" y2="11" />
+                  </svg>
+                  <span>Zoom +</span>
+                </button>
+                <button class="toolbar-btn" id="zoom-out" title="Zoom Out">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="M21 21l-4.35-4.35" />
+                    <line x1="8" y1="11" x2="14" y2="11" />
+                  </svg>
+                  <span>Zoom -</span>
+                </button>
+                <button
+                  class="toolbar-btn"
+                  id="fit-canvas"
+                  title="Fit to Canvas"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+                    <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+                    <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+                    <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+                  </svg>
+                  <span>Fit</span>
+                </button>
+              </div>
+
+              <div class="toolbar-separator"></div>
+
+              <div class="toolbar-group">
+                <button
+                  class="toolbar-btn"
+                  id="delete-selected"
+                  title="Delete Selected"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <polyline points="3,6 5,6 21,6" />
+                    <path
+                      d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                    />
+                    <line x1="10" y1="11" x2="10" y2="17" />
+                    <line x1="14" y1="11" x2="14" y2="17" />
+                  </svg>
+                  <span>Delete</span>
+                </button>
+                <button class="toolbar-btn" id="undo" title="Undo (Ctrl+Z)">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M3 7v6h6" />
+                    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                  </svg>
+                  <span>Undo</span>
+                </button>
+                <button class="toolbar-btn" id="redo" title="Redo (Ctrl+Y)">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M21 7v6h-6" />
+                    <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
+                  </svg>
+                  <span>Redo</span>
+                </button>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 32px">
+              <div style="flex: 1; position: relative">
+                <div class="canvas-container">
+                  <canvas id="image-canvas"></canvas>
+                </div>
+              </div>
+              <div style="width: 320px; min-width: 300px">
+                <div class="editor-tabs">
+                  <!-- Tab Headers -->
+                  <div class="tab-header">
+                    <button class="tab-btn active" data-tab="upload">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"
+                        />
+                        <polyline points="14,2 14,8 20,8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                        <polyline points="10,9 9,9 8,9" />
+                      </svg>
+                      Upload
+                    </button>
+                    <button class="tab-btn" data-tab="edit">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                        />
+                        <path d="m18.5 2.5 3 3L12 15l-4 1 1-4Z" />
+                      </svg>
+                      Edit
+                    </button>
+                    <button class="tab-btn" data-tab="text">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <polyline points="4,7 4,4 20,4 20,7" />
+                        <line x1="9" y1="20" x2="15" y2="20" />
+                        <line x1="12" y1="4" x2="12" y2="20" />
+                      </svg>
+                      Text
+                    </button>
+                  </div>
+
+                  <!-- Tab Content -->
+                  <!-- Upload Tab -->
+                  <div class="tab-content active" id="tab-upload-content">
+                    <div class="tab-section">
+                      <h4 class="section-title">Upload Image</h4>
+                      <div class="upload-area" id="upload-drop-zone">
+                        <div class="upload-icon">
+                          <svg
+                            width="32"
+                            height="32"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                          >
+                            <path
+                              d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                            />
+                            <polyline points="7,10 12,15 17,10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                          </svg>
+                        </div>
+                        <p class="upload-text">
+                          Drag & drop or click to upload
+                        </p>
+                        <p class="upload-subtext">PNG, JPG, SVG up to 10MB</p>
+                        <input
+                          type="file"
+                          id="file-upload"
+                          accept="image/*"
+                          style="display: none"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="tab-section">
+                      <h4 class="section-title">Image Library</h4>
+                      <div class="image-library">
+                        <div class="library-grid">
+                          <div class="library-item" data-image="astronaut">
+                            <img
+                              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%237dd3fc'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='%23000' font-size='12'%3EAstro%3C/text%3E%3C/svg%3E"
+                              alt="Astronaut"
+                            />
+                            <span>Astronaut</span>
+                          </div>
+                          <div class="library-item" data-image="space">
+                            <img
+                              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23141420'/%3E%3Ccircle cx='20' cy='20' r='2' fill='%23fff'/%3E%3Ccircle cx='80' cy='30' r='1.5' fill='%23fff'/%3E%3Ccircle cx='60' cy='70' r='1' fill='%23fff'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='%23fff' font-size='10'%3ESpace%3C/text%3E%3C/svg%3E"
+                              alt="Space"
+                            />
+                            <span>Space</span>
+                          </div>
+                          <div class="library-item" data-image="rocket">
+                            <img
+                              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,10 35,80 50,70 65,80' fill='%23c4b5fd'/%3E%3Ccircle cx='50' cy='35' r='8' fill='%23fff'/%3E%3Ctext x='50' y='95' text-anchor='middle' fill='%237dd3fc' font-size='8'%3ERocket%3C/text%3E%3C/svg%3E"
+                              alt="Rocket"
+                            />
+                            <span>Rocket</span>
+                          </div>
+                          <div class="library-item" data-image="planet">
+                            <img
+                              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='30' fill='%2310b981'/%3E%3Cellipse cx='50' cy='50' rx='40' ry='8' fill='none' stroke='%237dd3fc' stroke-width='2'/%3E%3Ctext x='50' y='90' text-anchor='middle' fill='%237dd3fc' font-size='8'%3EPlanet%3C/text%3E%3C/svg%3E"
+                              alt="Planet"
+                            />
+                            <span>Planet</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Edit Tab -->
+                  <div class="tab-content" id="tab-edit-content">
+                    <div class="tab-section">
+                      <h4 class="section-title">Background Removal</h4>
+                      <button id="remove-bg-btn" class="action-btn">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path d="M9 12l2 2 4-4" />
+                          <circle cx="12" cy="12" r="10" />
+                        </svg>
+                        Remove Background
+                      </button>
+                      <div class="control-group" style="margin-top: 16px;">
+                        <label class="control-label" for="bg-threshold-slider">Fine-tune Threshold (%)</label>
+                        <div class="slider-container">
+                          <input
+                            type="range"
+                            id="bg-threshold-slider"
+                            min="10"
+                            max="90"
+                            value="50"
+                            class="slider"
+                          />
+                          <span class="slider-value">50%</span>
+                        </div>
+                      </div>
+                      <button id="reset-image-btn" class="action-btn secondary" style="margin-top: 16px;">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path
+                            d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"
+                          />
+                          <path d="M21 3v5h-5" />
+                          <path
+                            d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"
+                          />
+                          <path d="M8 16H3v5" />
+                        </svg>
+                        Reset All Effects
+                      </button>
+                    </div>
+
+                    <div class="tab-section">
+                      <h4 class="section-title">Border & Outline</h4>
+                      <button id="add-border-btn" class="action-btn">Add Border</button>
+                      <div id="border-controls" style="display: none; margin-top: 16px;">
+                        <div class="control-group">
+                          <label class="control-label">Border Thickness</label>
+                          <div class="slider-container">
+                            <input
+                              type="range"
+                              id="border-thickness"
+                              min="1"
+                              max="50"
+                              value="5"
+                              class="slider"
+                            />
+                            <span class="slider-value">5px</span>
+                          </div>
+                        </div>
+
+                        <div class="control-group">
+                          <label class="control-label">Border Color</label>
+                          <div class="color-picker-container">
+                            <input
+                              type="color"
+                              id="border-color"
+                              value="#ffffff"
+                              class="color-picker"
+                            />
+                            <span class="color-preview" style="background-color: #ffffff;"></span>
+                          </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label class="control-label">Corner Style</label>
+                            <select id="border-corner-style" class="style-select">
+                                <option value="round">Round</option>
+                                <option value="miter">Miter</option>
+                                <option value="bevel">Bevel</option>
+                            </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Text Tab -->
+                  <div class="tab-content" id="tab-text-content">
+                    <div class="tab-section">
+                      <h4 class="section-title">Add Text</h4>
+
+                      <div class="control-group">
+                        <label class="control-label">Text Content</label>
+                        <textarea
+                          id="text-input"
+                          class="text-input"
+                          placeholder="Enter your text..."
+                          rows="3"
+                        ></textarea>
+                        <button id="add-text-btn" class="action-btn">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                          >
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                          Add Text
+                        </button>
+                      </div>
+
+                      <div class="control-group">
+                        <label class="control-label">Font Family</label>
+                        <select id="font-family" class="style-select">
+                          <option value="Arial">Arial</option>
+                          <option value="Helvetica">Helvetica</option>
+                          <option value="Times New Roman">
+                            Times New Roman
+                          </option>
+                          <option value="Georgia">Georgia</option>
+                          <option value="Verdana">Verdana</option>
+                          <option value="Courier New">Courier New</option>
+                          <option value="Impact">Impact</option>
+                          <option value="Comic Sans MS">Comic Sans MS</option>
+                        </select>
+                      </div>
+
+                      <div class="control-group">
+                        <label class="control-label">Font Size</label>
+                        <div class="slider-container">
+                          <input
+                            type="range"
+                            id="font-size"
+                            min="8"
+                            max="72"
+                            value="24"
+                            class="slider"
+                          />
+                          <span class="slider-value">24px</span>
+                        </div>
+                      </div>
+
+                      <div class="control-group">
+                        <label class="control-label">Text Color</label>
+                        <div class="color-picker-container">
+                          <input
+                            type="color"
+                            id="text-color"
+                            value="#ffffff"
+                            class="color-picker"
+                          />
+                          <span class="color-preview"></span>
+                        </div>
+                      </div>
+
+                      <div class="control-group">
+                        <label class="control-label">Text Style</label>
+                        <div class="style-buttons">
+                          <button class="style-btn" data-style="bold">
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+                              <path
+                                d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"
+                              />
+                            </svg>
+                          </button>
+                          <button class="style-btn" data-style="italic">
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <line x1="19" y1="4" x2="10" y2="4" />
+                              <line x1="14" y1="20" x2="5" y2="20" />
+                              <line x1="15" y1="4" x2="9" y2="20" />
+                            </svg>
+                          </button>
+                          <button class="style-btn" data-style="underline">
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <path
+                                d="M6 4h6a4 4 0 0 1 4 4v6a4 4 0 0 1-4 4H6z"
+                              />
+                              <line x1="6" y1="20" x2="18" y2="20" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="control-group">
+                        <label class="control-label">Text Alignment</label>
+                        <div class="style-buttons">
+                          <button
+                            class="style-btn alignment-btn active"
+                            data-align="left"
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <line x1="21" y1="10" x2="3" y2="10" />
+                              <line x1="15" y1="6" x2="3" y2="6" />
+                              <line x1="17" y1="14" x2="3" y2="14" />
+                              <line x1="13" y1="18" x2="3" y2="18" />
+                            </svg>
+                          </button>
+                          <button
+                            class="style-btn alignment-btn"
+                            data-align="center"
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <line x1="18" y1="10" x2="6" y2="10" />
+                              <line x1="21" y1="6" x2="3" y2="6" />
+                              <line x1="21" y1="14" x2="3" y2="14" />
+                              <line x1="18" y1="18" x2="6" y2="18" />
+                            </svg>
+                          </button>
+                          <button
+                            class="style-btn alignment-btn"
+                            data-align="right"
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <line x1="21" y1="10" x2="3" y2="10" />
+                              <line x1="21" y1="6" x2="9" y2="6" />
+                              <line x1="21" y1="14" x2="7" y2="14" />
+                              <line x1="21" y1="18" x2="11" y2="18" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="status-bar">
+              <div class="status-info">
+                <span id="canvas-info">Ready to edit images</span>
+              </div>
+              <div class="zoom-info">
+                <span id="zoom-level">100%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <canvas id="bg-canvas" style="display: none"></canvas>
+
+    <!-- Sticker Customizer Section - Redesigned -->
+    <div id="sticker-customizer-section" class="shopify-section">
+      <style>
+        /* Root variables for both sections */
+        :root {
+          /* Dark Theme (Default) */
+          --bg: #0b0b10;
+          --panel: #141420;
+          --card-bg: rgba(255, 255, 255, 0.04);
+          --card-border: rgba(255, 255, 255, 0.08);
+          --muted: #8b90a6;
+          --text: #e9ecf3;
+          --accent: #7dd3fc;
+          --accent-2: #c4b5fd;
+          --error: #ef4444;
+          --ok: #10b981;
+          --ring: rgba(125, 211, 252, 0.25);
+          --hover-bg: rgba(255, 255, 255, 0.08);
+          --input-bg: #0f1020;
+          --border-light: rgba(255, 255, 255, 0.12);
+          --canvas-pattern: #1a1a1a;
+          --canvas-bg: #0f1020;
+          --gradient-start: #111429;
+          --gradient-end: #0b0b10;
+        }
+
+        /* Light Theme */
+        [data-theme="light"] {
+          --bg: #f8fafc;
+          --panel: #ffffff;
+          --card-bg: rgba(255, 255, 255, 0.9);
+          --card-border: rgba(0, 0, 0, 0.1);
+          --muted: #64748b;
+          --text: #1e293b;
+          --accent: #0ea5e9;
+          --accent-2: #8b5cf6;
+          --error: #ef4444;
+          --ok: #10b981;
+          --ring: rgba(14, 165, 233, 0.15);
+          --hover-bg: rgba(0, 0, 0, 0.05);
+          --input-bg: #ffffff;
+          --border-light: rgba(0, 0, 0, 0.15);
+          --canvas-pattern: #e2e8f0;
+          --canvas-bg: #f1f5f9;
+          --gradient-start: #e2e8f0;
+          --gradient-end: #f8fafc;
+        }
+
+        /* Global Styles */
+        body {
+          margin: 0;
+          padding: 0;
+          background: var(--bg);
+          font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+          transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Theme Controller Styles */
+        .theme-controller {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          z-index: 1000;
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          border-radius: 12px;
+          padding: 12px;
+          backdrop-filter: blur(10px);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+          transition: all 0.3s ease;
+        }
+
+        .theme-toggle {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: none;
+          border: 1px solid var(--border-light);
+          border-radius: 8px;
+          padding: 8px 12px;
+          color: var(--text);
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-size: 14px;
+          font-weight: 600;
+        }
+
+        .theme-toggle:hover {
+          background: var(--hover-bg);
+          border-color: var(--accent);
+          color: var(--accent);
+        }
+
+        .theme-icon {
+          width: 16px;
+          height: 16px;
+          transition: transform 0.3s ease;
+        }
+
+        .theme-toggle:hover .theme-icon {
+          transform: rotate(180deg);
+        }
+
+        /* Image Editor Styles */
+        .image-editor-container {
+          max-width: 1200px;
+          margin: 40px auto 20px auto;
+          padding: 0 20px;
+          font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+          background: radial-gradient(
+            1200px 700px at 20% 0%,
+            var(--gradient-start) 0,
+            var(--gradient-end) 60%
+          );
+          color: var(--text);
+          transition: all 0.3s ease;
+        }
+
+        .image-editor-container * {
+          box-sizing: border-box;
+        }
+
+        .editor-card {
+          background: linear-gradient(
+            180deg,
+            var(--card-bg),
+            var(--card-bg)
+          );
+          border: 1px solid var(--card-border);
+          border-radius: 18px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
+
+        [data-theme="light"] .editor-card {
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+        }
+
+        .editor-header {
+          padding: 22px 24px;
+          border-bottom: 1px solid var(--card-border);
+          transition: border-color 0.3s ease;
+        }
+
+        .editor-title {
+          font-size: 28px;
+          font-weight: 700;
+          color: var(--text);
+          margin: 0 0 10px 0;
+          line-height: 1.2;
+        }
+
+        .editor-subtitle {
+          font-size: 16px;
+          color: var(--muted);
+          margin: 0;
+          line-height: 1.4;
+        }
+
+        .editor-content {
+          padding: 24px;
+        }
+
+        /* Toolbar Styles */
+        .editor-toolbar {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 16px 20px;
+          background: var(--hover-bg);
+          border: 1px solid var(--card-border);
+          border-radius: 12px;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+          transition: all 0.3s ease;
+        }
+
+        .toolbar-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .toolbar-separator {
+          width: 1px;
+          height: 32px;
+          background: var(--border-light);
+          margin: 0 8px;
+          transition: background-color 0.3s ease;
+        }
+
+        .toolbar-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 10px 14px;
+          border: 1px solid var(--border-light);
+          border-radius: 8px;
+          background: var(--hover-bg);
+          color: var(--text);
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          text-decoration: none;
+          white-space: nowrap;
+        }
+
+        .toolbar-btn:hover:not(:disabled) {
+          border-color: var(--accent);
+          color: var(--accent);
+          background: var(--ring);
+        }
+
+        .toolbar-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .toolbar-btn.active {
+          border-color: var(--accent);
+          color: var(--accent);
+          background: var(--ring);
+        }
+
+        .toolbar-btn svg {
+          flex-shrink: 0;
+        }
+
+        /* Canvas Container */
+        .canvas-container {
+          position: relative;
+          background: linear-gradient(45deg, var(--canvas-pattern) 25%, transparent 25%),
+            linear-gradient(-45deg, var(--canvas-pattern) 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, var(--canvas-pattern) 75%),
+            linear-gradient(-45deg, transparent 75%, var(--canvas-pattern) 75%);
+          background-size: 20px 20px;
+          background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+          background-color: var(--canvas-bg);
+          border: 1px solid var(--card-border);
+          border-radius: 12px;
+          overflow: hidden;
+          min-height: 500px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+        }
+
+        #image-canvas {
+          border: 1px solid var(--border-light);
+          border-radius: 8px;
+          transition: border-color 0.3s ease;
+        }
+
+        /* Status Bar */
+        .status-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 16px;
+          margin-top: 16px;
+          background: var(--hover-bg);
+          border: 1px solid var(--card-border);
+          border-radius: 8px;
+          font-size: 13px;
+          color: var(--muted);
+          transition: all 0.3s ease;
+        }
+
+        .status-info {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .zoom-info {
+          font-weight: 600;
+          color: var(--text);
+        }
+
+        /* Responsive Design for Image Editor */
+        @media (max-width: 768px) {
+          .editor-toolbar {
+            padding: 12px 16px;
+            gap: 6px;
+          }
+
+          .toolbar-btn {
+            padding: 8px 10px;
+            font-size: 12px;
+          }
+
+          .toolbar-separator {
+            display: none;
+          }
+
+          .editor-title {
+            font-size: 24px;
+          }
+
+          .canvas-container {
+            min-height: 400px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .toolbar-group {
+            flex-wrap: wrap;
+          }
+
+          .toolbar-btn span {
+            display: none;
+          }
+
+          .toolbar-btn {
+            padding: 8px;
+          }
+        }
+
+        /* Enhanced Tab System Styles */
+        .editor-tabs {
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          border-radius: 12px;
+          overflow: hidden;
+          height: fit-content;
+          transition: all 0.3s ease;
+        }
+
+        .tab-header {
+          display: flex;
+          background: var(--hover-bg);
+          border-bottom: 1px solid var(--card-border);
+          transition: all 0.3s ease;
+        }
+
+        .tab-btn {
+          flex: 1;
+          padding: 14px 12px;
+          background: none;
+          border: none;
+          color: var(--muted);
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          position: relative;
+          border-radius: 0;
+        }
+
+        .tab-btn:hover {
+          color: var(--accent);
+          background: var(--ring);
+        }
+
+        .tab-btn.active {
+          color: var(--accent);
+          background: var(--ring);
+        }
+
+        .tab-btn.active::after {
+          content: "";
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: var(--accent);
+        }
+
+        .tab-btn svg {
+          stroke-width: 2;
+          flex-shrink: 0;
+        }
+
+        .tab-content {
+          display: none;
+          padding: 20px;
+          max-height: 600px;
+          overflow-y: auto;
+        }
+
+        .tab-content.active {
+          display: block;
+        }
+
+        .tab-content::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .tab-content::-webkit-scrollbar-track {
+          background: var(--hover-bg);
+          border-radius: 3px;
+        }
+
+        .tab-content::-webkit-scrollbar-thumb {
+          background: var(--ring);
+          border-radius: 3px;
+        }
+
+        .tab-content::-webkit-scrollbar-thumb:hover {
+          background: var(--accent);
+        }
+
+        .tab-section {
+          margin-bottom: 24px;
+        }
+
+        .tab-section:last-child {
+          margin-bottom: 0;
+        }
+
+        .section-title {
+          font-size: 16px;
+          font-weight: 600;
+          color: var(--text);
+          margin: 0 0 16px 0;
+          padding-bottom: 8px;
+          border-bottom: 1px solid var(--card-border);
+          transition: all 0.3s ease;
+        }
+
+        /* Upload Area */
+        .upload-area {
+          border: 2px dashed var(--ring);
+          border-radius: 12px;
+          padding: 32px 20px;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          background: var(--hover-bg);
+        }
+
+        .upload-area:hover {
+          border-color: var(--accent);
+          background: var(--ring);
+        }
+
+        .upload-area.dragover {
+          border-color: var(--accent);
+          background: var(--ring);
+        }
+
+        .upload-icon {
+          color: var(--accent);
+          margin-bottom: 12px;
+        }
+
+        .upload-text {
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text);
+          margin: 0 0 4px 0;
+        }
+
+        .upload-subtext {
+          font-size: 12px;
+          color: var(--muted);
+          margin: 0;
+        }
+
+        /* Image Library */
+        .image-library {
+          margin-top: 12px;
+        }
+
+        .library-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+        }
+
+        .library-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 16px 12px;
+          border: 1px solid var(--border-light);
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          background: var(--hover-bg);
+        }
+
+        .library-item:hover {
+          border-color: var(--accent);
+          background: var(--ring);
+          transform: translateY(-1px);
+        }
+
+        .library-item img {
+          width: 48px;
+          height: 48px;
+          border-radius: 6px;
+          margin-bottom: 8px;
+          object-fit: cover;
+        }
+
+        .library-item span {
+          font-size: 12px;
+          font-weight: 500;
+          color: var(--text);
+          text-align: center;
+        }
+
+        /* Action Buttons */
+        .action-btn {
+          width: 100%;
+          padding: 12px 16px;
+          border: 1px solid var(--border-light);
+          border-radius: 8px;
+          background: var(--ring);
+          color: var(--accent);
+          font-weight: 600;
+          font-size: 14px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+
+        .action-btn:hover {
+          background: var(--accent);
+          color: var(--bg);
+          border-color: var(--accent);
+          transform: translateY(-1px);
+        }
+
+        .action-btn:active {
+          transform: translateY(0);
+        }
+
+        .action-btn.secondary {
+          background: var(--hover-bg);
+          color: var(--text);
+        }
+
+        .action-btn.secondary:hover {
+          background: var(--border-light);
+          color: var(--text);
+        }
+
+        .action-btn:last-child {
+          margin-bottom: 0;
+        }
+
+        /* Control Groups */
+        .control-group {
+          margin-bottom: 20px;
+        }
+
+        .control-group:last-child {
+          margin-bottom: 0;
+        }
+
+        .control-label {
+          display: block;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text);
+          margin-bottom: 8px;
+        }
+
+        /* Sliders */
+        .slider-container {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .slider {
+          flex: 1;
+          height: 6px;
+          border-radius: 3px;
+          background: var(--hover-bg);
+          outline: none;
+          cursor: pointer;
+          -webkit-appearance: none;
+          appearance: none;
+          transition: background-color 0.3s ease;
+        }
+
+        .slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: var(--accent);
+          border: 2px solid var(--bg);
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          transition: all 0.2s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+          background: #38bdf8;
+          transform: scale(1.1);
+        }
+
+        .slider::-moz-range-thumb {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: var(--accent);
+          border: 2px solid var(--bg);
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          transition: all 0.2s ease;
+        }
+
+        .slider-value {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--accent);
+          min-width: 40px;
+          text-align: right;
+        }
+
+        /* Color Pickers */
+        .color-picker-container {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .color-picker {
+          width: 40px;
+          height: 32px;
+          border: 1px solid var(--border-light);
+          border-radius: 6px;
+          background: none;
+          cursor: pointer;
+          overflow: hidden;
+          transition: border-color 0.3s ease;
+        }
+
+        .color-picker::-webkit-color-swatch-wrapper {
+          padding: 0;
+        }
+
+        .color-picker::-webkit-color-swatch {
+          border: none;
+          border-radius: 4px;
+        }
+
+        .color-picker::-moz-color-swatch {
+          border: none;
+          border-radius: 4px;
+        }
+
+        .color-preview {
+          flex: 1;
+          height: 32px;
+          border: 1px solid var(--border-light);
+          border-radius: 6px;
+          background: linear-gradient(45deg, var(--muted) 25%, transparent 25%),
+            linear-gradient(-45deg, var(--muted) 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, var(--muted) 75%),
+            linear-gradient(-45deg, transparent 75%, var(--muted) 75%);
+          background-size: 8px 8px;
+          background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+          background-color: var(--canvas-bg);
+          transition: all 0.3s ease;
+        }
+
+        /* Select Dropdowns */
+        .style-select {
+          width: 100%;
+          padding: 10px 12px;
+          border: 1px solid var(--border-light);
+          border-radius: 6px;
+          background: var(--input-bg);
+          color: var(--text);
+          font-size: 14px;
+          cursor: pointer;
+          outline: none;
+          transition: all 0.2s ease;
+        }
+
+        .style-select:focus {
+          border-color: var(--accent);
+          box-shadow: 0 0 0 3px var(--ring);
+        }
+
+        .style-select option {
+          background: var(--input-bg);
+          color: var(--text);
+        }
+
+        /* Text Input */
+        .text-input {
+          width: 100%;
+          padding: 12px;
+          border: 1px solid var(--border-light);
+          border-radius: 6px;
+          background: var(--input-bg);
+          color: var(--text);
+          font-size: 14px;
+          font-family: inherit;
+          resize: vertical;
+          outline: none;
+          transition: all 0.2s ease;
+          margin-bottom: 12px;
+        }
+
+        .text-input:focus {
+          border-color: var(--accent);
+          box-shadow: 0 0 0 3px var(--ring);
+        }
+
+        .text-input::placeholder {
+          color: var(--muted);
+        }
+
+        /* Style Buttons */
+        .style-buttons {
+          display: flex;
+          gap: 6px;
+        }
+
+        .style-btn {
+          flex: 1;
+          padding: 10px;
+          border: 1px solid var(--border-light);
+          border-radius: 6px;
+          background: var(--hover-bg);
+          color: var(--muted);
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .style-btn:hover {
+          border-color: var(--accent);
+          color: var(--accent);
+        }
+
+        .style-btn.active {
+          border-color: var(--accent);
+          color: var(--accent);
+          background: var(--ring);
+        }
+
+        .alignment-btn.active {
+          background: var(--ring);
+        }
+
+        /* Responsive Design for Tabs */
+        @media (max-width: 768px) {
+          .tab-btn {
+            padding: 12px 8px;
+            font-size: 12px;
+            gap: 4px;
+          }
+
+          .tab-btn span {
+            display: none;
+          }
+
+          .tab-content {
+            padding: 16px;
+            max-height: 500px;
+          }
+
+          .library-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .library-item {
+            padding: 12px;
+          }
+
+          .library-item img {
+            width: 40px;
+            height: 40px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .tab-header {
+            flex-direction: column;
+          }
+
+          .tab-btn {
+            border-radius: 0;
+            justify-content: flex-start;
+            padding: 12px 16px;
+          }
+
+          .tab-btn span {
+            display: inline;
+          }
+
+          .style-buttons {
+            flex-direction: column;
+          }
+
+          .slider-container {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+          }
+
+          .slider-value {
+            text-align: left;
+            min-width: auto;
+          }
+        }
+        .sticker-customizer-container * {
+          box-sizing: border-box;
+        }
+
+        .sticker-customizer-container {
+          max-width: 1200px;
+          margin: 40px auto;
+          padding: 0 20px;
+          font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+          background: radial-gradient(
+            1200px 700px at 20% 0%,
+            var(--gradient-start) 0,
+            var(--gradient-end) 60%
+          );
+          color: var(--text);
+          transition: all 0.3s ease;
+        }
+
+        /* Card-like wrapper for the entire customizer content */
+        .customizer-card {
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          border-radius: 18px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
+
+        [data-theme="light"] .customizer-card {
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+        }
+
+        .customizer-header {
+          padding: 22px 24px;
+          border-bottom: 1px solid var(--card-border);
+          transition: border-color 0.3s ease;
+        }
+
+        .customizer-title {
+          font-size: 28px;
+          font-weight: 700;
+          color: var(--text);
+          margin: 0 0 10px 0;
+          line-height: 1.2;
+        }
+
+        .customizer-subtitle {
+          font-size: 16px;
+          color: var(--muted);
+          margin: 0;
+          line-height: 1.4;
+        }
+
+        .customizer-content {
+          display: grid;
+          grid-template-columns: 1fr 1.5fr 1fr 1fr;
+          gap: 30px;
+          padding: 24px;
+        }
+
+        /* Column Headers */
+        .product-column h3,
+        .material-column h3,
+        .size-column h3,
+        .quantity-column h3,
+        .shape-options .shape-title,
+        .material-column h4 {
+          font-size: 18px;
+          font-weight: 600;
+          color: #c9d2ea;
+          margin: 0 0 16px 0;
+          display: block;
+        }
+
+        /* Select Dropdowns */
+        .product-select,
+        .finish-select {
+          width: 100%;
+          padding: 12px 14px;
+          border-radius: 12px;
+          color: var(--text);
+          background: var(--input-bg);
+          border: 1px solid var(--border-light);
+          outline: none;
+          transition: 0.2s;
+          font-size: 16px;
+          cursor: pointer;
+        }
+
+        .product-select:focus,
+        .finish-select:focus {
+          box-shadow: 0 0 0 6px var(--ring);
+          border-color: var(--accent);
+        }
+
+        /* Shape Options (Styled as selectable buttons) */
+        .shape-options {
+          margin-top: 24px;
+        }
+
+        .shape-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .shape-option {
+          display: flex;
+          align-items: center;
+          padding: 12px 14px;
+          border: 1px solid var(--border-light);
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          background: var(--hover-bg);
+        }
+
+        .shape-option:hover {
+          background: linear-gradient(90deg, #7dd3fc 0%, #38bdf8 100%);
+          box-shadow: 0 0 16px 4px #7dd3fc66;
+          border: none;
+          font-weight: 700;
+          color: #0b0b10;
+          transition: background 0.2s, box-shadow 0.2s;
+        }
+
+        .shape-option.selected {
+          background: linear-gradient(90deg, #7dd3fc 0%, #38bdf8 100%);
+          box-shadow: 0 0 24px 6px #7dd3fc99;
+          border: none;
+          font-weight: 700;
+          color: #0b0b10;
+          transition: background 0.2s, box-shadow 0.2s;
+        }
+
+        .shape-option input[type="radio"] {
+          display: none; /* Hide original radio button */
+        }
+
+        .shape-option label {
+          font-size: 14px;
+          color: inherit;
+          cursor: pointer;
+          font-weight: 600;
+        }
+
+        /* Material Grid */
+        .material-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+        }
+
+        .material-option {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 16px 12px;
+          border: 1px solid var(--border-light);
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          background: var(--hover-bg);
+          text-align: center;
+        }
+
+        .material-option:hover {
+          background: linear-gradient(90deg, #7dd3fc 0%, #38bdf8 100%);
+          box-shadow: 0 0 16px 4px #7dd3fc66;
+          border: none;
+          font-weight: 700;
+          color: #0b0b10;
+          transform: translateY(-2px);
+          transition: background 0.2s, box-shadow 0.2s;
+        }
+
+        .material-option.selected {
+          background: linear-gradient(90deg, #7dd3fc 0%, #38bdf8 100%);
+          box-shadow: 0 0 24px 6px #7dd3fc99;
+          border: none;
+          font-weight: 700;
+          color: #0b0b10;
+          transform: translateY(-2px);
+          transition: background 0.2s, box-shadow 0.2s;
+        }
+
+        .material-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          margin-bottom: 10px;
+          border: 1px solid var(--border-light);
+          transition: border-color 0.3s ease;
+        }
+        .material-vinyl {
+          background: linear-gradient(135deg, #f5f5f5, #e0e0e0);
+        }
+        .material-holographic {
+          background: linear-gradient(
+            135deg,
+            #ff6b9d,
+            #c4b5fd,
+            #60a5fa,
+            #34d399
+          );
+        }
+        .material-transparent {
+          background: linear-gradient(45deg, #333 25%, transparent 25%),
+            linear-gradient(-45deg, #333 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, #333 75%),
+            linear-gradient(-45deg, transparent 75%, #333 75%);
+          background-size: 8px 8px;
+          background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+          background-color: #111;
+        }
+        .material-glitter {
+          background: linear-gradient(135deg, #ffd700, #ffed4e, #fbbf24);
+        }
+        .material-mirror {
+          background: linear-gradient(135deg, #e5e7eb, #d1d5db, #9ca3af);
+        }
+        .material-pixie {
+          background: linear-gradient(135deg, #f3e8ff, #e9d5ff, #c4b5fd);
+        }
+
+        .material-label {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text);
+        }
+
+        .material-column h4 {
+          margin-top: 24px;
+        }
+
+        /* Size & Quantity Tables */
+        .size-quantity-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 14px;
+        }
+
+        .size-quantity-table th {
+          /* This won't be used as there are no th in the html but good to have*/
+          padding: 12px 8px;
+          text-align: left;
+          font-weight: 600;
+          color: var(--muted);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .size-quantity-table td {
+          padding: 10px 14px;
+          border: 1px solid transparent;
+          border-bottom: 1px solid var(--card-border);
+          cursor: pointer;
+          transition: background-color 0.2s ease, border-color 0.2s ease;
+          border-radius: 8px;
+        }
+
+        .size-quantity-table tr:hover td {
+          background: linear-gradient(90deg, #7dd3fc 0%, #38bdf8 100%);
+          box-shadow: 0 0 16px 4px #7dd3fc66;
+          border: none;
+          font-weight: 700;
+          color: #0b0b10;
+          transition: background 0.2s, box-shadow 0.2s;
+        }
+
+        .size-quantity-table tr.selected td {
+          background: linear-gradient(90deg, #7dd3fc 0%, #38bdf8 100%);
+          box-shadow: 0 0 24px 6px #7dd3fc99;
+          border: none;
+          font-weight: 700;
+          color: #0b0b10;
+          transition: background 0.2s, box-shadow 0.2s;
+        }
+
+        .quantity-column .size-quantity-table td:nth-child(2) {
+          font-weight: 600;
+          color: var(--text);
+        }
+        .quantity-column .size-quantity-table tr.selected,
+        .quantity-column .size-quantity-table tr:hover {
+          background: linear-gradient(90deg, #7dd3fc 0%, #38bdf8 100%);
+          box-shadow: 0 0 24px 6px #7dd3fc99;
+          border-radius: 8px;
+          font-weight: 700;
+          color: #0b0b10;
+          transition: background 0.2s, box-shadow 0.2s;
+        }
+        .quantity-column .size-quantity-table tr.selected td,
+        .quantity-column .size-quantity-table tr:hover td {
+          background: none !important;
+          box-shadow: none !important;
+          color: #0b0b10 !important;
+          border: none !important;
+        }
+
+        .quantity-column .size-quantity-table td:nth-child(3) {
+          font-weight: 700;
+          color: var(--ok);
+        }
+
+        .custom-row td {
+          color: var(--muted);
+          font-style: italic;
+        }
+        .custom-row.selected td {
+          color: var(--accent-2);
+        }
+
+        /* Upload Button Section */
+        .upload-section {
+          grid-column: 1 / -1;
+          text-align: center;
+          padding: 18px 24px;
+          margin-top: 20px;
+          border-top: 1px solid var(--card-border);
+          transition: border-color 0.3s ease;
+        }
+
+        .upload-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 14px 40px;
+          border-radius: 12px;
+          border: 1px solid var(--border-light);
+          background: var(--hover-bg);
+          color: var(--text);
+          cursor: pointer;
+          font-weight: 700;
+          font-size: 16px;
+          transition: all 0.2s ease;
+          text-transform: none;
+        }
+
+        .upload-button:hover {
+          border-color: var(--accent);
+          color: var(--accent);
+          background: var(--ring);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+          .customizer-content {
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+          }
+          .product-column,
+          .material-column {
+            grid-column: 1 / -1;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .customizer-content {
+            grid-template-columns: 1fr;
+            padding: 20px 15px;
+          }
+          .material-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .customizer-title {
+            font-size: 24px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .material-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      </style>
+
+      <div class="sticker-customizer-container">
+        <div class="customizer-card">
+          <div class="customizer-header">
+            <h1 class="customizer-title">Print customized stickers</h1>
+            <p class="customizer-subtitle">
+              Choose your desired outline, size, quantity and material. Upload
+              your design and go to our editor.
+            </p>
+          </div>
+
+          <div class="customizer-content">
+            <!-- Product Column -->
+            <div class="product-column">
+              <h3>Product</h3>
+              <select class="product-select" id="product-select">
+                <option value="die-cut-sticker">Die Cut Sticker</option>
+                <option value="circle-sticker">Circle Sticker</option>
+                <option value="square-sticker">Square Sticker</option>
+                <option value="holographic-sticker">Holographic Sticker</option>
+              </select>
+
+              <div class="shape-options">
+                <h4 class="shape-title">Shape</h4>
+                <div class="shape-grid">
+                  <div class="shape-option selected">
+                    <input
+                      type="radio"
+                      name="shape"
+                      value="contour-cut"
+                      id="contour-cut"
+                      checked
+                    />
+                    <label for="contour-cut">Contour Cut</label>
+                  </div>
+                  <div class="shape-option">
+                    <input
+                      type="radio"
+                      name="shape"
+                      value="square"
+                      id="square"
+                    />
+                    <label for="square">Square</label>
+                  </div>
+                  <div class="shape-option">
+                    <input
+                      type="radio"
+                      name="shape"
+                      value="circle"
+                      id="circle"
+                    />
+                    <label for="circle">Circle</label>
+                  </div>
+                  <div class="shape-option">
+                    <input
+                      type="radio"
+                      name="shape"
+                      value="rounded-corners"
+                      id="rounded-corners"
+                    />
+                    <label for="rounded-corners">Rounded Corners</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Material Column -->
+            <div class="material-column">
+              <h3>Material</h3>
+              <div class="material-grid">
+                <div class="material-option selected" data-material="vinyl">
+                  <div class="material-icon material-vinyl"></div>
+                  <div class="material-label">Vinyl</div>
+                </div>
+                <div class="material-option" data-material="holographic">
+                  <div class="material-icon material-holographic"></div>
+                  <div class="material-label">Holographic</div>
+                </div>
+                <div class="material-option" data-material="transparent">
+                  <div class="material-icon material-transparent"></div>
+                  <div class="material-label">Transparent</div>
+                </div>
+                <div class="material-option" data-material="glitter">
+                  <div class="material-icon material-glitter"></div>
+                  <div class="material-label">Glitter</div>
+                </div>
+                <div class="material-option" data-material="mirror">
+                  <div class="material-icon material-mirror"></div>
+                  <div class="material-label">Mirror</div>
+                </div>
+                <div class="material-option" data-material="pixie">
+                  <div class="material-icon material-pixie"></div>
+                  <div class="material-label">Pixie Dust</div>
+                </div>
+              </div>
+
+              <h4 style="margin-top: 24px">Finish</h4>
+              <select class="finish-select" id="finish-select">
+                <option value="glossy">Glossy</option>
+                <option value="matte">Matte</option>
+                <option value="satin">Satin</option>
+              </select>
+            </div>
+
+            <!-- Size Column -->
+            <div class="size-column">
+              <h3>Size, inch (W×H)</h3>
+              <table class="size-quantity-table">
+                <tbody>
+                  <tr data-size="2x2">
+                    <td>2" × 2"</td>
+                  </tr>
+                  <tr data-size="3x3" class="selected">
+                    <td>3" × 3"</td>
+                  </tr>
+                  <tr data-size="4x4">
+                    <td>4" × 4"</td>
+                  </tr>
+                  <tr data-size="5x5">
+                    <td>5" × 5"</td>
+                  </tr>
+                  <tr data-size="6x6">
+                    <td>6" × 6"</td>
+                  </tr>
+                  <tr data-size="7x7">
+                    <td>7" × 7"</td>
+                  </tr>
+                  <tr data-size="8x8">
+                    <td>8" × 8"</td>
+                  </tr>
+                  <tr data-size="9x9">
+                    <td>9" × 9"</td>
+                  </tr>
+                  <tr data-size="10x10">
+                    <td>10" × 10"</td>
+                  </tr>
+                  <tr data-size="custom" class="custom-row">
+                    <td>Custom size</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Quantity Column -->
+            <div class="quantity-column">
+              <h3>Quantity</h3>
+              <table class="size-quantity-table">
+                <tbody>
+                  <tr data-quantity="55" data-price="26">
+                    <td>55 pcs</td>
+                    <td>$26</td>
+                    <td></td>
+                  </tr>
+                  <tr data-quantity="100" data-price="47" class="selected">
+                    <td>100 pcs</td>
+                    <td>$47</td>
+                    <td></td>
+                  </tr>
+                  <tr data-quantity="200" data-price="64">
+                    <td>200 pcs</td>
+                    <td>$64</td>
+                    <td>-32%</td>
+                  </tr>
+                  <tr data-quantity="300" data-price="96">
+                    <td>300 pcs</td>
+                    <td>$96</td>
+                    <td>-32%</td>
+                  </tr>
+                  <tr data-quantity="500" data-price="114">
+                    <td>500 pcs</td>
+                    <td>$114</td>
+                    <td>-52%</td>
+                  </tr>
+                  <tr data-quantity="600" data-price="136">
+                    <td>600 pcs</td>
+                    <td>$136</td>
+                    <td>-52%</td>
+                  </tr>
+                  <tr data-quantity="900" data-price="175">
+                    <td>900 pcs</td>
+                    <td>$175</td>
+                    <td>-59%</td>
+                  </tr>
+                  <tr data-quantity="1200" data-price="201">
+                    <td>1200 pcs</td>
+                    <td>$201</td>
+                    <td>-65%</td>
+                  </tr>
+                  <tr data-quantity="1500" data-price="252">
+                    <td>1500 pcs</td>
+                    <td>$252</td>
+                    <td>-65%</td>
+                  </tr>
+                  <tr data-quantity="custom" class="custom-row">
+                    <td>Custom quantity</td>
+                    <td></td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Upload Section removed as requested -->
+          </div>
+        </div>
+      </div>
+
+      <script>
+        // Theme Controller Logic
+        class ThemeController {
+          constructor() {
+            this.currentTheme = localStorage.getItem('theme') || 'dark';
+            this.init();
+          }
+
+          init() {
+            this.applyTheme(this.currentTheme);
+            this.bindEvents();
+          }
+
+          bindEvents() {
+            const themeToggle = document.getElementById('theme-toggle');
+            themeToggle.addEventListener('click', () => this.toggleTheme());
+
+            // Keyboard shortcut: Ctrl/Cmd + Shift + T
+            document.addEventListener('keydown', (e) => {
+              if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
+                e.preventDefault();
+                this.toggleTheme();
+              }
+            });
+          }
+
+          toggleTheme() {
+            this.currentTheme = this.currentTheme === 'dark' ? 'light' : 'dark';
+            this.applyTheme(this.currentTheme);
+            localStorage.setItem('theme', this.currentTheme);
+          }
+
+          applyTheme(theme) {
+            const root = document.documentElement;
+            const themeIcon = document.getElementById('theme-icon');
+            const themeText = document.getElementById('theme-text');
+
+            if (theme === 'light') {
+              root.setAttribute('data-theme', 'light');
+              // Change to moon icon for light theme
+              themeIcon.innerHTML = `
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              `;
+              themeText.textContent = 'Dark';
+            } else {
+              root.removeAttribute('data-theme');
+              // Sun icon for dark theme
+              themeIcon.innerHTML = `
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/>
+                <line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/>
+                <line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              `;
+              themeText.textContent = 'Light';
+            }
+
+            // Trigger a custom event for other components that might need to react
+            document.dispatchEvent(new CustomEvent('themeChanged', { 
+              detail: { theme } 
+            }));
+          }
+
+          getCurrentTheme() {
+            return this.currentTheme;
+          }
+        }
+
+        // Initialize theme controller when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+          window.themeController = new ThemeController();
+        });
+
+        // Simulate a click on the file upload button after DOMContentLoaded
+        document.addEventListener("DOMContentLoaded", function () {
+          setTimeout(function () {
+            var uploadInput = document.getElementById("file-upload");
+            if (uploadInput) {
+              uploadInput.click();
+              console.log("Simulated click on file upload input.");
+            }
+          }, 1000);
+        });
+        // The original interactive functionality script remains unchanged.
+        document.addEventListener("DOMContentLoaded", function () {
+          // Helper to remove all selected classes from a list of elements
+          const removeSelected = (elements) =>
+            elements.forEach((el) => el.classList.remove("selected"));
+
+          // Shape selection
+          const shapeOptions = document.querySelectorAll(".shape-option");
+          shapeOptions.forEach((option) => {
+            option.addEventListener("click", function () {
+              removeSelected(shapeOptions);
+              this.classList.add("selected");
+              this.querySelector('input[type="radio"]').checked = true;
+            });
+          });
+
+          // Material selection
+          const materialOptions = document.querySelectorAll(".material-option");
+          materialOptions.forEach((option) => {
+            option.addEventListener("click", function () {
+              removeSelected(materialOptions);
+              this.classList.add("selected");
+            });
+          });
+
+          // Size selection
+          const sizeRows = document.querySelectorAll(
+            ".size-column .size-quantity-table tr"
+          );
+          sizeRows.forEach((row) => {
+            row.addEventListener("click", function () {
+              if (this.dataset.size === "custom") return; // Do nothing for custom row
+              removeSelected(sizeRows);
+              this.classList.add("selected");
+            });
+          });
+
+          // Quantity selection
+          const quantityRows = document.querySelectorAll(
+            ".quantity-column .size-quantity-table tr"
+          );
+          quantityRows.forEach((row) => {
+            row.addEventListener("click", function () {
+              if (this.dataset.quantity === "custom") return; // Do nothing for custom row
+              removeSelected(quantityRows);
+              this.classList.add("selected");
+            });
+          });
+
+          // Upload button functionality removed as requested
+        });
+      </script>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const canvas = new fabric.Canvas("image-canvas");
+        let activeImage;
+        let originalDataURL = null;
+
+        // Tab switching logic
+        const tabButtons = document.querySelectorAll(".tab-btn");
+        const tabContents = document.querySelectorAll(".tab-content");
+
+        tabButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            const tab = button.dataset.tab;
+
+            tabButtons.forEach((btn) => btn.classList.remove("active"));
+            tabContents.forEach((content) => content.classList.remove("active"));
+
+            button.classList.add("active");
+            document.getElementById(`tab-${tab}-content`).classList.add("active");
+          });
+        });
+
+        // Handle image upload
+        const fileUpload = document.getElementById("file-upload");
+        fileUpload.addEventListener("change", (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (f) => {
+            fabric.Image.fromURL(f.target.result, (img) => {
+              canvas.clear();
+              img.set({ left: 50, top: 50, selectable: true });
+              canvas.add(img).setActiveObject(img);
+              canvas.renderAll();
+              activeImage = img;
+              originalDataURL = f.target.result; // save original
+            });
+          };
+          reader.readAsDataURL(file);
+        });
+
+        let u2netModel;
+        let isModelLoading = false;
+
+        // U2Net model configuration
+        const U2NET_CONFIG = {
+            modelUrl: 'https://cdn.jsdelivr.net/gh/patrickisroman/u2net-tensorflow@main/models/u2net/model.json',
+            inputSize: 320,
+            normalize: true
+        };
+
+        async function loadU2NetModel() {
+            if (isModelLoading) return;
+            isModelLoading = true;
+            
+            console.log("Loading U2Net model...");
+            document.getElementById("remove-bg-btn").textContent = "Loading Model...";
+            document.getElementById("remove-bg-btn").disabled = true;
+            
+            try {
+                // Set backend preference
+                try {
+                    await tf.setBackend('webgl');
+                    await tf.ready();
+                } catch (e) {
+                    console.warn("WebGL backend not available, falling back to CPU");
+                    await tf.setBackend('cpu');
+                    await tf.ready();
+                }
+
+                // Load the U2Net model
+                u2netModel = await tf.loadGraphModel(U2NET_CONFIG.modelUrl);
+                console.log("U2Net model loaded successfully");
+                
+                document.getElementById("remove-bg-btn").textContent = "Remove Background";
+                document.getElementById("remove-bg-btn").disabled = false;
+                
+            } catch (error) {
+                console.error("Failed to load U2Net model:", error);
+                document.getElementById("remove-bg-btn").textContent = "Model Load Failed";
+                document.getElementById("remove-bg-btn").disabled = true;
+                alert("Failed to load background removal model. Please refresh and try again.");
+            }
+            
+            isModelLoading = false;
+        }
+
+        // Load model on page load
+        loadU2NetModel();
+
+        function preprocessImage(imageElement) {
+            return tf.tidy(() => {
+                // Convert image to tensor
+                let tensor = tf.browser.fromPixels(imageElement);
+                
+                // Resize to model input size (320x320)
+                tensor = tf.image.resizeBilinear(tensor, [U2NET_CONFIG.inputSize, U2NET_CONFIG.inputSize]);
+                
+                // Normalize to [0, 1] range
+                tensor = tensor.div(255.0);
+                
+                // Add batch dimension
+                tensor = tensor.expandDims(0);
+                
+                return tensor;
+            });
+        }
+
+        function postprocessMask(maskTensor, originalWidth, originalHeight, threshold = 0.5) {
+            return tf.tidy(() => {
+                // Remove batch dimension and get the first channel if multi-channel
+                let mask = maskTensor.squeeze();
+                if (mask.shape.length === 3) {
+                    mask = mask.slice([0, 0, 0], [mask.shape[0], mask.shape[1], 1]).squeeze();
+                }
+                
+                // Apply threshold
+                const thresholdValue = parseFloat(document.getElementById("bg-threshold-slider").value) / 100;
+                mask = mask.greater(tf.scalar(thresholdValue));
+                
+                // Resize back to original image size
+                mask = tf.image.resizeBilinear(mask.expandDims(-1), [originalHeight, originalWidth]);
+                
+                // Convert to float for alpha channel
+                return mask.squeeze().toFloat();
+            });
+        }
+
+        async function applyBackgroundRemoval(imageElement, maskTensor) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                canvas.width = imageElement.naturalWidth || imageElement.width;
+                canvas.height = imageElement.naturalHeight || imageElement.height;
+                
+                // Draw original image
+                ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
+                
+                // Get image data
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // Get mask data
+                const maskData = maskTensor.dataSync();
+                
+                // Apply mask to alpha channel
+                for (let i = 0; i < maskData.length; i++) {
+                    const alpha = Math.round(maskData[i] * 255);
+                    data[i * 4 + 3] = alpha; // Set alpha channel
+                }
+                
+                // Put modified image data back
+                ctx.putImageData(imageData, 0, 0);
+                
+                resolve(canvas.toDataURL('image/png'));
+            });
+        }
+
+        document.getElementById("remove-bg-btn").addEventListener("click", async () => {
+            if (!activeImage) {
+                alert("Please upload an image first.");
+                return;
+            }
+            
+            if (!u2netModel) {
+                alert("Model is still loading. Please wait a moment and try again.");
+                return;
+            }
+
+            // Show loading state
+            const btn = document.getElementById("remove-bg-btn");
+            const originalText = btn.textContent;
+            btn.textContent = "Processing...";
+            btn.disabled = true;
+
+            try {
+                console.log("Starting background removal...");
+                
+                // Get the image element
+                const imageElement = activeImage._element;
+                
+                // Preprocess image for U2Net
+                const inputTensor = preprocessImage(imageElement);
+                
+                console.log("Running U2Net inference...");
+                
+                // Run inference
+                const predictions = await u2netModel.predict(inputTensor);
+                
+                // Handle different output formats
+                let maskTensor;
+                if (Array.isArray(predictions)) {
+                    // If multiple outputs, take the first one (main prediction)
+                    maskTensor = predictions[0];
+                } else {
+                    maskTensor = predictions;
+                }
+                
+                console.log("Post-processing mask...");
+                
+                // Post-process the mask
+                const processedMask = postprocessMask(
+                    maskTensor, 
+                    imageElement.naturalWidth || imageElement.width,
+                    imageElement.naturalHeight || imageElement.height
+                );
+                
+                // Apply background removal
+                const resultDataUrl = await applyBackgroundRemoval(imageElement, processedMask);
+                
+                // Update canvas with new image
+                fabric.Image.fromURL(resultDataUrl, (img) => {
+                    canvas.clear();
+                    img.set({ 
+                        left: 50, 
+                        top: 50, 
+                        selectable: true 
+                    });
+                    canvas.add(img).setActiveObject(img);
+                    canvas.renderAll();
+                    activeImage = img;
+                });
+                
+                console.log("Background removal completed successfully");
+                
+                // Clean up tensors
+                inputTensor.dispose();
+                if (Array.isArray(predictions)) {
+                    predictions.forEach(tensor => tensor.dispose());
+                } else {
+                    predictions.dispose();
+                }
+                processedMask.dispose();
+                
+            } catch (error) {
+                console.error("Background removal failed:", error);
+                alert("Background removal failed. Please try again or check the console for details.");
+            } finally {
+                // Restore button state
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        // Reset button (restore original image)
+        document
+          .getElementById("reset-image-btn")
+          .addEventListener("click", () => {
+            if (!originalDataURL) return;
+            fabric.Image.fromURL(originalDataURL, (img) => {
+              canvas.clear();
+              img.set({ left: 50, top: 50, selectable: true });
+              canvas.add(img).setActiveObject(img);
+              canvas.renderAll();
+              activeImage = img;
+            });
+          });
+
+        // Live update slider value text and label
+        const thresholdSlider = document.getElementById("bg-threshold-slider");
+        const sliderValue = thresholdSlider.nextElementSibling;
+        
+        thresholdSlider.addEventListener("input", () => {
+          sliderValue.textContent = thresholdSlider.value + "%";
+        });
+        
+        // Initialize slider value display
+        sliderValue.textContent = thresholdSlider.value + "%";
+      });
+    </script>
+  </body>
+</html>
